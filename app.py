@@ -30,16 +30,17 @@ if "GOOGLE_API_KEY" in st.secrets:
 else:
     api_key = st.sidebar.text_input("Google API Key", type="password")
 
-# --- GEMINI API (DÜZELTİLDİ: v1 -> v1beta) ---
+# --- GEMINI API (ADRES DÜZELTİLDİ: v1beta) ---
 def yapay_zekaya_sor(prompt, key):
-    # DİKKAT: Flash modeli 'v1beta' ile çalışır. GPT buraya 'v1' yazmıştı, düzelttim.
+    # Model ismi
     model = "gemini-1.5-flash"
     headers = {"Content-Type": "application/json"}
     data = {"contents": [{"parts": [{"text": prompt}]}]}
 
     try:
-        # İşte sihirli değnek burası: v1beta yaptık
+        # İŞTE ÇÖZÜM BURADA: 'v1beta' yaptık.
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+        
         response = requests.post(url, headers=headers, json=data)
 
         if response.status_code == 200:
@@ -56,7 +57,7 @@ st.caption("Yapay Zeka Destekli Sosyal Mutfak Platformu")
 
 tab1, tab2 = st.tabs(["🔥 Şef'e Sor (AI)", "🌟 Sizden Gelenler (Vitrin)"])
 
-# ================= TAB 1 =================
+# ================= TAB 1: AI =================
 with tab1:
     col1, col2 = st.columns([3, 1])
     with col1:
@@ -72,7 +73,7 @@ with tab1:
         elif not malzemeler:
             st.warning("⚠️ Malzeme girmedin!")
         else:
-            with st.spinner("Şef senin için menü oluşturuyor..."):
+            with st.spinner("Şef düşünüyor..."):
                 ozellik = "çok ekonomik ve pratik" if butce_modu else "gurme lezzetinde"
                 prompt = f"""
                 Sen bir şefsin. Malzemeler: {malzemeler}.
@@ -111,7 +112,7 @@ with tab1:
         link = f"https://www.trendyol.com/sr?q={malzemeler.split(',')[0]}"
         st.markdown(f"""<a href="{link}" target="_blank" class="buy-btn">🛒 Malzemeleri Trendyol'dan Söyle</a>""", unsafe_allow_html=True)
 
-# ================= TAB 2 =================
+# ================= TAB 2: VİTRİN =================
 with tab2:
     st.header("🌟 Haftanın Yıldız Şefleri")
 
