@@ -1,172 +1,83 @@
 import streamlit as st
 import google.generativeai as genai
-import time
 
 # --- SAYFA AYARLARI ---
 st.set_page_config(page_title="Dolap Şefi", page_icon="👨‍🍳", layout="centered")
 
-# --- HAFIZA (SESSION STATE) ---
-if 'oneriler' not in st.session_state: st.session_state.oneriler = []
-if 'secilen_yemek' not in st.session_state: st.session_state.secilen_yemek = None
-if 'tam_tarif' not in st.session_state: st.session_state.tam_tarif = ""
-
-# --- TASARIM (CSS) ---
+# --- TASARIM ---
 st.markdown("""
     <style>
     .stApp { background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364); color: white; }
-    h1 { text-align: center; color: #f27a1a; font-family: 'Arial Black', sans-serif; }
-    
-    /* Sekmeler */
-    .stTabs [data-baseweb="tab-list"] { justify-content: center; gap: 10px; }
-    .stTabs [data-baseweb="tab"] { background-color: rgba(255,255,255,0.1); border-radius: 8px; color: white; }
-    .stTabs [data-baseweb="tab"][aria-selected="true"] { background-color: #f27a1a; color: white; }
-    
-    /* Para Kazandıran Buton */
-    .buy-btn {
-        display: block;
-        width: 100%;
-        background-color: #28a745; /* Yeşil Satın Alma Rengi */
-        color: white;
-        text-align: center;
-        padding: 15px;
-        border-radius: 10px;
-        font-weight: bold;
-        text-decoration: none;
-        margin-top: 20px;
-        font-size: 18px;
-        transition: 0.3s;
-    }
-    .buy-btn:hover { background-color: #218838; transform: scale(1.02); }
-    
-    /* Vitrin Kartları */
-    .vitrin-card {
-        background: rgba(255,255,255,0.05);
-        padding: 15px;
-        border-radius: 10px;
-        margin-bottom: 15px;
-        border-left: 5px solid #f27a1a;
-    }
+    h1 { text-align: center; color: #f27a1a; }
+    .stButton>button { background-color: #28a745; color: white; border-radius: 10px; height: 50px; font-size: 18px; font-weight: bold; border: none; width: 100%; }
+    .stButton>button:hover { background-color: #218838; }
+    .error-box { background-color: #ff4b4b; color: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; }
     </style>
 """, unsafe_allow_html=True)
 
+# --- BAŞLIK ---
+st.title("👨‍🍳 Dolap Şefi")
+st.caption("Yapay Zeka Destekli Sosyal Mutfak")
+
 # --- API ANAHTARI ---
+api_key = None
 if "GOOGLE_API_KEY" in st.secrets:
     api_key = st.secrets["GOOGLE_API_KEY"]
 else:
-    api_key = st.sidebar.text_input("API Key", type="password")
+    api_key = st.sidebar.text_input("Google API Key", type="password")
+
+# --- MODEL BAĞLANTISI (AKILLI SEÇİM) ---
+model = None
+active_model_name = "Bilinmiyor"
 
 if api_key:
-    try:
-        genai.configure(api_key=api_key)
-        # Hata önleyici dedektif kodu
-        model_name = 'gemini-1.5-flash'
-        model = genai.GenerativeModel(model_name)
-    except:
-        st.error("Bağlantı hatası.")
+    genai.configure(api_key=api_key)
+    
+    # Sırayla bu modelleri deneyeceğiz. Hangisi çalışırsa onu kapacak.
+    model_listesi = ['gemini-1.5-flash', 'gemini-pro', 'gemini-1.0-pro']
+    
+    for m in model_listesi:
+        try:
+            test_model = genai.GenerativeModel(m)
+            # Ufak bir "Merhaba" diyip test edelim
+            # test_model.generate_content("test") # Bunu kapattım kota yemesin diye
+            model = test_model
+            active_model_name = m
+            break # Çalışanı bulduk, döngüden çık
+        except:
+            continue # Bu çalışmadı, sıradakine geç
 
-# --- BAŞLIK ---
-st.title("👨‍🍳 Dolap Şefi")
-st.caption("Yapay Zeka Destekli Sosyal Mutfak Platformu")
+# --- ARAYÜZ ---
+tab1, tab2 = st.tabs(["🔥 Şef'e Sor", "🌟 Vitrin"])
 
-# --- SEKMELER ---
-tab1, tab2 = st.tabs(["🔥 Şef'e Sor (AI)", "🌟 Sizden Gelenler (Vitrin)"])
-
-# ================= TAB 1: AI & PARA KAZANMA =================
 with tab1:
-    col1, col2 = st.columns([3, 1])
-    with col1:
-        malzemeler = st.text_input("Dolapta ne var?", placeholder="Örn: Yumurta, patates...")
-    with col2:
-        st.write("")
-        st.write("")
-        butce_modu = st.checkbox("💸 Ucuz Olsun")
-
-    if st.button("🔍 Bana 3 Fikir Ver", type="primary"):
-        if not api_key or not malzemeler:
-            st.warning("API Key veya malzeme eksik.")
+    malzemeler = st.text_input("Dolapta ne var?", placeholder="Örn: Yumurta, soğan, peynir...")
+    
+    if st.button("🍳 Tarif Bul"):
+        if not api_key:
+            st.error("⚠️ API Anahtarı eksik!")
+        elif not malzemeler:
+            st.warning("⚠️ Malzeme girmedin!")
+        elif not model:
+            # Hiçbir model çalışmadıysa burası çalışır
+            st.markdown(f"<div class='error-box'>🔴 HATA: Hiçbir yapay zeka modeline bağlanılamadı. API Anahtarını ve Kota durumunu kontrol et.</div>", unsafe_allow_html=True)
         else:
-            with st.spinner("Şef düşünüyor..."):
-                ozellik = "çok ekonomik" if butce_modu else "gurme lezzetinde"
-                prompt = f"Malzemeler: {malzemeler}. Bana {ozellik} 3 farklı yemek ismi ve kısa açıklama ver. Format: 1. İsim - Açıklama..."
+            with st.spinner(f"Şef düşünüyor... (Kullanılan Beyin: {active_model_name})"):
                 try:
-                    res = model.generate_content(prompt)
-                    st.session_state.oneriler = res.text.split('\n')
-                    st.rerun()
-                except: st.error("AI yanıt vermedi.")
+                    prompt = f"Malzemeler: {malzemeler}. Bana Türk damak tadına uygun, lezzetli TEK BİR yemek tarifi ver. Adını, malzemelerini ve yapılışını güzelce yaz."
+                    response = model.generate_content(prompt)
+                    st.success("Tarif Hazır!")
+                    st.markdown(response.text)
+                    
+                    # Trendyol Linki
+                    link = f"https://www.trendyol.com/sr?q={malzemeler.split(',')[0]}"
+                    st.markdown(f"""<br><a href="{link}" target="_blank" style="background: #f27a1a; color: white; padding: 12px; text-decoration: none; border-radius: 8px; display: block; text-align: center; font-weight: bold;">🛒 Malzemeleri Trendyol'dan Al</a>""", unsafe_allow_html=True)
+                
+                except Exception as e:
+                    # Hatayı gizlemiyoruz, direkt gösteriyoruz
+                    st.error(f"BEKLENMEDİK HATA: {e}")
 
-    # Seçim Ekranı
-    if st.session_state.oneriler:
-        st.divider()
-        st.subheader("Seçimini Yap:")
-        temiz_liste = [x for x in st.session_state.oneriler if len(x) > 5]
-        secim = st.radio("Menü:", temiz_liste)
-        
-        if st.button("🍳 Tarifini Getir"):
-            with st.spinner("Tarif yazılıyor..."):
-                prompt_tarif = f"Seçilen yemek: {secim}. Malzemeler: {malzemeler}. Detaylı tarif yaz."
-                res_tarif = model.generate_content(prompt_tarif)
-                st.session_state.tam_tarif = res_tarif.text
-                st.session_state.secilen_yemek = secim # Seçilen yemeğin adını kaydet
-                st.rerun()
-
-    # Tarif ve SATIŞ LİNKİ
-    if st.session_state.tam_tarif:
-        st.info("İşte Tarifin! Afiyet olsun.")
-        st.markdown(st.session_state.tam_tarif)
-        
-        # --- PARA KAZANMA BÖLÜMÜ (AFFILIATE) ---
-        # Yemeğin ismini alıp Trendyol arama linkine çeviriyoruz
-        arama_terimi = malzemeler.split(',')[0] # İlk malzemeyi baz alalım
-        affiliate_link = f"https://www.trendyol.com/sr?q={arama_terimi}"
-        
-        st.markdown(f"""
-            <a href="{affiliate_link}" target="_blank" class="buy-btn">
-                🛒 Bu Tarifin Malzemelerini Trendyol'dan Söyle
-            </a>
-            <p style='text-align:center; font-size:12px; color:#aaa; margin-top:5px;'>
-                *Bu link üzerinden yapacağınız alışverişler Dolap Şefi'ne katkı sağlar.
-            </p>
-        """, unsafe_allow_html=True)
-
-# ================= TAB 2: VİTRİN (SİMÜLASYON) =================
 with tab2:
-    st.header("🌟 Haftanın Yıldız Şefleri")
-    st.markdown("Topluluğumuzun en beğenilen tarifleri burada!")
-
-    # BURASI ÖNEMLİ: Veritabanımız olmadığı için "Sabit Vitrin" yapıyoruz.
-    # Sanki insanlar yüklemiş de burada çıkıyormuş gibi görünecek.
-    
-    # Örnek 1
-    with st.container():
-        st.markdown("""
-        <div class="vitrin-card">
-            <h3>🍝 Öğrenci Usulü Makarna</h3>
-            <p><strong>Şef:</strong> Berkecan Yılmaz (@berkecan)</p>
-            <p><i>"Gece acıkınca 5 dakikada yaptığım spesiyal soslu makarnam."</i></p>
-            <p>⭐️⭐️⭐️⭐️⭐️ (124 Beğeni)</p>
-        </div>
-        """, unsafe_allow_html=True)
-        # Video yerine örnek bir resim/video alanı (Streamlit demo video)
-        st.video("https://www.w3schools.com/html/mov_bbb.mp4") 
-
-    # Örnek 2
-    with st.container():
-        st.markdown("""
-        <div class="vitrin-card">
-            <h3>🥞 Pazar Kahvaltısı Krepi</h3>
-            <p><strong>Şef:</strong> Ayşe Teyze (@ayseninmutfagi)</p>
-            <p><i>"Torunlarım bayılıyor, içine sırrımı da kattım."</i></p>
-            <p>⭐️⭐️⭐️⭐️ (89 Beğeni)</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    st.markdown("---")
-    st.subheader("📹 Sen de Yükle!")
-    
-    with st.form("upload_vitrin"):
-        st.text_input("Kullanıcı Adın")
-        st.text_input("Tarif Başlığı")
-        st.file_uploader("Video Seç", type=["mp4"])
-        if st.form_submit_button("🚀 Vitrine Gönder"):
-            st.success("Harika! Videon editör onayına düştü. Onaylanınca burada yayınlanacak!")
-            time.sleep(2)
+    st.info("Bu alan şu an demo aşamasındadır.")
+    st.markdown("### 🍝 Örnek: Fırın Makarna (Şef: Berkecan)")
+    st.video("https://www.w3schools.com/html/mov_bbb.mp4")
