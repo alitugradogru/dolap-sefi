@@ -1,27 +1,26 @@
 import streamlit as st
 import requests
-import json
 import time
 
 # --- SAYFA AYARLARI ---
 st.set_page_config(page_title="Dolap Şefi", page_icon="👨‍🍳", layout="centered")
 
 # --- HAFIZA ---
-if 'oneriler' not in st.session_state: st.session_state.oneriler = []
-if 'tam_tarif' not in st.session_state: st.session_state.tam_tarif = ""
+if 'oneriler' not in st.session_state:
+    st.session_state.oneriler = []
+if 'tam_tarif' not in st.session_state:
+    st.session_state.tam_tarif = ""
 
-# --- TASARIM (AYNI KALDI) ---
+# --- TASARIM ---
 st.markdown("""
     <style>
     .stApp { background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364); color: white; }
-    h1 { text-align: center; color: #f27a1a; font-family: 'Arial Black', sans-serif; text-shadow: 2px 2px 4px #000000; }
+    h1 { text-align: center; color: #f27a1a; font-family: 'Arial Black', sans-serif; }
     .stTabs [data-baseweb="tab-list"] { justify-content: center; gap: 15px; }
-    .stTabs [data-baseweb="tab"] { background-color: rgba(255,255,255,0.1); border-radius: 8px; color: white; padding: 10px 20px; }
+    .stTabs [data-baseweb="tab"] { background-color: rgba(255,255,255,0.1); border-radius: 8px; color: white; }
     .stTabs [data-baseweb="tab"][aria-selected="true"] { background-color: #f27a1a; color: white; }
-    .buy-btn { display: block; width: 100%; background-color: #28a745; color: white; text-align: center; padding: 15px; border-radius: 10px; font-weight: bold; text-decoration: none; margin-top: 20px; font-size: 18px; transition: 0.3s; }
-    .buy-btn:hover { background-color: #218838; transform: scale(1.02); }
-    .vitrin-card { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; margin-bottom: 20px; border-left: 5px solid #f27a1a; box-shadow: 0 4px 10px rgba(0,0,0,0.3); }
-    .stButton>button { width: 100%; border-radius: 10px; font-weight: bold; height: 50px; }
+    .vitrin-card { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; margin-bottom: 20px; border-left: 5px solid #f27a1a; }
+    .buy-btn { display: block; width: 100%; background-color: #28a745; color: white; text-align: center; padding: 15px; border-radius: 10px; font-weight: bold; text-decoration: none; margin-top: 20px; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -35,12 +34,12 @@ else:
 # --- AKILLI FONKSİYON (TANK MODU 🛡️) ---
 def yapay_zekaya_sor(prompt, key):
     # Sırayla denenecek modeller. Biri bozuksa diğeri devreye girer.
-    modeller = ["gemini-1.5-flash", "gemini-pro", "gemini-1.0-pro"]
+    modeller = ["gemini-1.5-flash", "gemini-pro", "gemini-1.0-pro", "gemini-1.5-pro"]
     
     headers = {'Content-Type': 'application/json'}
     data = {"contents": [{"parts": [{"text": prompt}]}]}
     
-    hata_mesaji = ""
+    son_hata = ""
     
     for model_ismi in modeller:
         try:
@@ -48,23 +47,23 @@ def yapay_zekaya_sor(prompt, key):
             response = requests.post(url, headers=headers, json=data)
             
             if response.status_code == 200:
-                # Başarılı olduysa hemen cevabı döndür ve döngüden çık
+                # Başarılı olduysa cevabı döndür ve döngüden çık
                 return response.json()['candidates'][0]['content']['parts'][0]['text']
             else:
                 # Hata aldıysak not et ve bir sonraki modele geç
-                hata_mesaji = f"Model ({model_ismi}) Hatası: {response.status_code}"
+                son_hata = f"Model ({model_ismi}) Hatası: {response.status_code}"
                 continue 
                 
         except Exception as e:
-            hata_mesaji = f"Bağlantı sorunu: {str(e)}"
+            son_hata = f"Bağlantı sorunu: {str(e)}"
             continue
 
     # Hiçbiri çalışmadıysa son hatayı döndür
-    return f"⚠️ Üzgünüm, Google sunucularına ulaşılamadı. Son hata: {hata_mesaji}"
+    return f"⚠️ Üzgünüm, Google sunucularına ulaşılamadı. Son hata: {son_hata}"
 
 # --- BAŞLIK ---
 st.title("👨‍🍳 Dolap Şefi")
-st.markdown("<p style='text-align: center; opacity: 0.8;'>Yapay Zeka Destekli Sosyal Mutfak Platformu</p>", unsafe_allow_html=True)
+st.caption("Yapay Zeka Destekli Sosyal Mutfak Platformu")
 
 # --- SEKMELER ---
 tab1, tab2 = st.tabs(["🔥 Şef'e Sor (AI)", "🌟 Sizden Gelenler (Vitrin)"])
@@ -73,7 +72,7 @@ tab1, tab2 = st.tabs(["🔥 Şef'e Sor (AI)", "🌟 Sizden Gelenler (Vitrin)"])
 with tab1:
     col1, col2 = st.columns([3, 1])
     with col1:
-        malzemeler = st.text_input("Dolabında neler var?", placeholder="Örn: Yumurta, mantar, krema...")
+        malzemeler = st.text_input("Dolabında neler var?", placeholder="Örn: Yumurta, mantar...")
     with col2:
         st.write("")
         st.write("")
@@ -136,7 +135,9 @@ with tab1:
 # ================= TAB 2: VİTRİN =================
 with tab2:
     st.header("🌟 Haftanın Yıldız Şefleri")
-        with st.container():
+    
+    # Hata veren girintiyi düzelttik:
+    with st.container():
         st.markdown("""
         <div class="vitrin-card">
             <h3>🍝 Öğrenci Usulü Makarna</h3>
@@ -149,7 +150,7 @@ with tab2:
         st.video("https://www.w3schools.com/html/mov_bbb.mp4") 
 
     # Örnek 2
-       with st.container():
+    with st.container():
         st.markdown("""
         <div class="vitrin-card">
             <h3>🥞 Pazar Kahvaltısı Krepi</h3>
@@ -162,6 +163,7 @@ with tab2:
 
     st.markdown("---")
     st.subheader("📹 Sen de Yükle!")
+    
     with st.form("upload_vitrin"):
         st.text_input("Kullanıcı Adın")
         st.file_uploader("Video Seç")
