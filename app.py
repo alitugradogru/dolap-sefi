@@ -124,12 +124,26 @@ with tab1:
 with tab2:
     st.header("🌟 Haftanın Yıldız Şefleri")
     
-    with st.container():
+   with st.container():
         st.markdown("""
         <div class="vitrin-card">
             <h3>🍝 Öğrenci Usulü Makarna</h3>
             <p><strong>Şef:</strong> Berkecan Yılmaz (@berkecan)</p>
+            <p><i>"Gece acıkınca 5 dakikada yaptığım spesiyal soslu makarnam."</i></p>
             <p>⭐️⭐️⭐️⭐️⭐️ (124 Beğeni)</p>
+        </div>
+        """, unsafe_allow_html=True)
+        # Demo Video
+        st.video("https://www.w3schools.com/html/mov_bbb.mp4") 
+
+    # Örnek 2
+    with st.container():
+        st.markdown("""
+        <div class="vitrin-card">
+            <h3>🥞 Pazar Kahvaltısı Krepi</h3>
+            <p><strong>Şef:</strong> Ayşe Teyze (@ayseninmutfagi)</p>
+            <p><i>"Torunlarım bayılıyor, içine sırrımı da kattım."</i></p>
+            <p>⭐️⭐️⭐️⭐️ (89 Beğeni)</p>
         </div>
         """, unsafe_allow_html=True)
         st.video("https://www.w3schools.com/html/mov_bbb.mp4") 
