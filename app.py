@@ -36,16 +36,13 @@ st.title("🤖 Dolap Şefi: AI Modu")
 st.markdown("Malzemeni yaz, Yapay Zeka sana özel şef tarifi üretsin!")
 
 # --- GİZLİ ANAHTAR KONTROLÜ ---
-# Secrets içinde anahtar var mı diye bakıyoruz
+# Kullanıcıya sormuyoruz, direkt sistemden çekiyoruz
 if "GOOGLE_API_KEY" in st.secrets:
     api_key = st.secrets["GOOGLE_API_KEY"]
     genai.configure(api_key=api_key)
 else:
-    # Secrets yoksa manuel giriş kutusu göster (Test için)
-    with st.sidebar:
-        api_key = st.text_input("Google API Key", type="password", placeholder="AIzaSy... kodunu buraya gir")
-        if api_key:
-            genai.configure(api_key=api_key)
+    st.error("🚨 Sistem Hatası: API Anahtarı bulunamadı. Lütfen geliştirici ile iletişime geçin.")
+    st.stop()
 
 # --- ANA EKRAN ---
 malzemeler = st.text_input("Dolabında neler var?", placeholder="Örn: Yumurta, bayat ekmek, biraz peynir...")
@@ -67,13 +64,10 @@ def get_category_image(kategori):
 if generate_btn:
     if not malzemeler:
         st.warning("⚠️ Malzeme yazmadın şefim!")
-    elif not api_key:
-        st.error("⚠️ API Anahtarı eksik! Lütfen Secrets ayarını yap veya soldan anahtarı gir.")
     else:
         try:
             with st.spinner("👨‍🍳 Şef düşünüyor... Yeni tarif icat ediliyor..."):
-                # GÜNCELLEME BURADA: Modeli 'gemini-1.5-flash' yaptık
-                model = genai.GenerativeModel('gemini-1.5-flash')
+                model = genai.GenerativeModel('gemini-pro')
                 
                 ozellik = "öğrenci dostu, çok ucuz ve pratik" if butce_modu else "lezzetli ve doyurucu"
                 
@@ -127,4 +121,3 @@ if generate_btn:
 
         except Exception as e:
             st.error(f"Bir hata oluştu: {e}")
-            st.info("API Anahtarın doğru, sorun model ismindeydi. Şimdi çözülmüş olmalı!")
