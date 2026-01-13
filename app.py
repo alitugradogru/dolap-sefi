@@ -5,137 +5,235 @@ import time
 st.set_page_config(page_title="Dolap Şefi", page_icon="👨‍🍳", layout="centered")
 
 # --- HAFIZA ---
+if "sonuclar" not in st.session_state:
+    st.session_state.sonuclar = [] 
 if "secilen_tarif" not in st.session_state:
-    st.session_state.secilen_tarif = None
+    st.session_state.secilen_tarif = None 
 
 # --- TASARIM ---
 st.markdown("""
 <style>
 .stApp { background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364); color: white; }
 h1 { text-align: center; color: #f27a1a; font-family: 'Arial Black', sans-serif; }
-.vitrin-card { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; margin-bottom: 20px; border-left: 5px solid #f27a1a; }
-/* Sadece Trendyol Butonu Kaldı */
-.btn-trendyol { display: block; width: 100%; background-color: #28a745; color: white; text-align: center; padding: 15px; border-radius: 10px; font-weight: bold; text-decoration: none; margin-top: 20px; font-size: 18px; transition: 0.3s; }
-.btn-trendyol:hover { background-color: #218838; transform: scale(1.02); }
+
+/* Haber Kartı Tasarımı */
+.haber-kart { 
+    background: rgba(255,255,255,0.08); 
+    padding: 15px; 
+    border-radius: 12px; 
+    border-left: 6px solid #f27a1a;
+    margin-bottom: 15px;
+    transition: 0.3s;
+}
+.haber-kart:hover { background: rgba(255,255,255,0.15); }
+
+/* Malzeme Listesi Etiketi */
+.malzeme-etiketi {
+    background-color: #f27a1a;
+    color: white;
+    padding: 3px 8px;
+    border-radius: 5px;
+    font-size: 12px;
+    margin-right: 5px;
+}
+
+.btn-trendyol { display: block; width: 100%; background-color: #28a745; color: white; text-align: center; padding: 15px; border-radius: 10px; font-weight: bold; text-decoration: none; margin-top: 20px; font-size: 18px; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- DEV TARİF ARŞİVİ (OFFLINE MOD) ---
-def tarif_bulucu(girdi):
-    girdi = girdi.lower()
-    
-    # İşte burası senin hazinen. En çok aranan tarifleri buraya gömdüm.
-    arsiv = {
-        # KAHVALTILIKLAR
-        "yumurta": {"ad": "Sokak Usulü Menemen", "desc": "Soğanlı, bol domatesli, ekmek banmalık efsane.", "tar": "1. Biberleri ince ince doğra ve yağda öldür.\n2. Kabukları soyulmuş domatesleri ekle, suyunu çekene kadar pişir.\n3. Yumurtaları kır ama çok karıştırma, beyazı gözüksün.\n4. İsteğe göre kaşar rendele."},
-        "tost": {"ad": "Büfe Tostu (Atom)", "desc": "Evdeki malzemelerle büfe lezzeti.", "tar": "1. Ekmeğin içine sucuk, kaşar ne varsa doldur.\n2. Dışına tereyağı ve çok az salça sür.\n3. Tost makinesinde iyice bastır."},
-        "krep": {"ad": "Tam Kıvamında Krep", "desc": "İster reçelle ye, ister peynirle.", "tar": "1. 2 yumurta, 1.5 su bardağı süt, 1.5 su bardağı unu çırp.\n2. Akışkan bir hamur olsun.\n3. Kızgın tavaya kepçeyle dök, arkalı önlü pişir."},
-        
-        # ANA YEMEKLER
-        "tavuk": {"ad": "Köri Soslu Tavuk (Dünya Mutfağı)", "desc": "Restoranlarda 300 TL vermeye son.", "tar": "1. Tavukları küp doğra, yüksek ateşte suyunu salmadan pişir.\n2. Ayrı yerde krema, köri ve karabiberi karıştır.\n3. Tavuklar pişince sosu dök, 5 dk kıvam aldır."},
-        "köfte": {"ad": "Anne Köftesi", "desc": "Yanına patates kızartmasıyla klasik lezzet.", "tar": "1. Kıyma, rendelenmiş soğan, yumurta, bayat ekmek içi ve kimyonu yoğur.\n2. Şekil ver ve dinlendir.\n3. Az yağlı tavada kızart."},
-        "patates": {"ad": "Fırında Baharatlı Patates (Cips Gibi)", "desc": "Yağ çekmeyen çıtır lezzet.", "tar": "1. Patatesleri elma dilim doğra.\n2. Zeytinyağı, kekik, pul biber ve tuzla harmanla.\n3. Yağlı kağıt serili tepside 200 derecede kızarana kadar pişir."},
-        "makarna": {"ad": "Demleme Usulü Makarna", "desc": "Süzmek yok, lezzeti içinde kalır.", "tar": "1. Tencereye az yağ, salça ve naneyi koyup kavur.\n2. Makarnaları ekle, üzerini 1 parmak geçecek kadar sıcak su koy.\n3. Suyunu çekene kadar kapağı kapalı pişir."},
-        "fasulye": {"ad": "Etli Kuru Fasulye", "desc": "Pilavın en iyi arkadaşı.", "tar": "1. Fasulyeleri akşamdan suya koy.\n2. Soğanı ve eti düdüklüde kavur, salça ekle.\n3. Fasulyeleri ve sıcak suyu ekle. Düdüklüde 25-30 dk pişir."},
-        "nohut": {"ad": "Lokanta Usulü Nohut", "desc": "Kıvamlı ve lezzetli.", "tar": "1. Haşlanmış nohutun varsa işin kolay. Yoksa akşamdan ısla.\n2. Bol soğanı yağda kavur, salçasını bol koy.\n3. Et suyu veya kemik suyu varsa ekle, kısık ateşte özleşsin."},
-        "patlıcan": {"ad": "Karnıyarık", "desc": "Türk mutfağının kralı.", "tar": "1. Patlıcanları alaca soy ve kızart.\n2. Ortalarını yar, kıymalı soğanlı harcı doldur.\n3. Üstüne salçalı su gezdirip fırına ver."},
-        "kabak": {"ad": "Fırın Mücver", "desc": "Kızartma derdi yok, hafif ve lezzetli.", "tar": "1. Kabakları rendele, suyunu sık (Çok önemli!).\n2. Yumurta, un, dereotu, peynir ekle karıştır.\n3. Yağlanmış tepsiye dök, fırında kızarana kadar pişir."},
-        "ıspanak": {"ad": "Yumurtalı Ispanak Kavurması", "desc": "Hem sağlıklı hem doyurucu.", "tar": "1. Soğanları pembeleşinceye kadar kavur.\n2. Yıkanmış ıspanakları ekle, sönene kadar çevir.\n3. Ispanakların arasında boşluk aç, yumurtaları oraya kır. Kapağı kapat."},
-        
-        # ÇORBALAR
-        "mercimek": {"ad": "Süzme Mercimek Çorbası", "desc": "Limon sıkıp içmelik şifa.", "tar": "1. Mercimek, patates, havucu tencereye al, su ekle haşla.\n2. Sebzeler yumuşayınca blenderdan geçir.\n3. Ayrı tavada tereyağı ve toz biberi yak, üzerine dök."},
-        "tarhana": {"ad": "Kış Çorbası (Tarhana)", "desc": "Anne eli değmiş gibi.", "tar": "1. Tarhanayı soğuk suda ezip aç.\n2. Tencerede salça, nane ve yağı kavur.\n3. Tarhanalı suyu ekle, kaynayana kadar karıştır."},
-        
-        # TATLILAR
-        "süt": {"ad": "Tam Kıvamında Sütlaç", "desc": "Üzeri nar gibi kızarmış.", "tar": "1. Pirinci az suda haşla.\n2. Sütü, şekeri ekle kaynat.\n3. Nişastayı az sütle açıp tencereye ekle.\n4. Kaselere paylaştır, fırında üzerini yak."},
-        "irmik": {"ad": "İrmik Helvası", "desc": "Dondurmalı servis önerilir.", "tar": "1. Tereyağında irmiği rengi dönene kadar kavur (Sabır lazım).\n2. Ayrı yerde sıcak süt ve şekeri karıştır.\n3. Şerbeti irmiğe dök (Dikkat sıçrar!), kapağı kapat demlensin."},
-        "muz": {"ad": "Muzlu Magnolia", "desc": "Kupta pratik tatlı.", "tar": "1. Süt, un, şeker, nişasta ile muhallebi yap.\n2. Burçak bisküviyi robottan geçir.\n3. Kupa sırayla bisküvi, muhallebi ve muz dilimleri diz."},
-        "kakao": {"ad": "Islak Kek (Brownie Tadında)", "desc": "Bol soslu, ağızda dağılan lezzet.", "tar": "1. Yumurta ve şekeri iyice çırp.\n2. Süt, yağ, kakao, un, kabartma tozu ekle.\n3. Fırından çıkınca üzerine ayırdığın kakaolu sosu dök."},
-    }
-    
-    # AKILLI ARAMA MOTORU
-    for anahtar, deger in arsiv.items():
-        if anahtar in girdi:
-            return deger
-            
-    # HİÇBİR ŞEY BULUNAMAZSA (UYDURMA MODU)
-    # Burası sayesinde "Ejder Meyvesi" bile yazsa boş dönmez.
-    return {
-        "ad": f"Şefin Özel {girdi.title()} Tabağı",
-        "desc": "Dolabındaki malzemelerle yaratıcılığını konuştur!",
-        "tar": f"1. {girdi.title()} güzelce yıkanır ve hazırlanır.\n2. Bir tavada az yağ ile sotelenir.\n3. Evde varsa soğan ve baharatlarla lezzetlendirilir.\n4. Kısık ateşte pişirilip sıcak servis edilir.\n\n*Bu özel bir malzeme olduğu için doğaçlama yapmanı öneririm!*"
-    }
+# --- DEV TARİF HAVUZU (LİSTE YAPISI) ---
+# Buraya istediğin kadar tarif ekleyebilirsin, sistem otomatik tarar.
+TUM_TARIFLER = [
+    {
+        "ad": "Efsane Menemen",
+        "malzemeler": "Yumurta, Domates, Biber, Sıvı Yağ, Tuz",
+        "desc": "Kahvaltıların vazgeçilmezi.",
+        "tar": "1. Biberleri doğrayıp yağda kavur.\n2. Domatesleri ekle suyunu çeksin.\n3. Yumurtaları kır, çok karıştırma."
+    },
+    {
+        "ad": "Peynirli Omlet",
+        "malzemeler": "Yumurta, Kaşar Peyniri, Tereyağı",
+        "desc": "5 dakikada protein deposu.",
+        "tar": "1. Yumurtaları çırp.\n2. Tavaya dök, altı pişince kaşarı ekle.\n3. İkiye katla servis et."
+    },
+    {
+        "ad": "Çılbır",
+        "malzemeler": "Yumurta, Yoğurt, Sarımsak, Tereyağı, Pul Biber",
+        "desc": "Yoğurt ve yumurtanın muhteşem uyumu.",
+        "tar": "1. Kaynayan sirkeli suya yumurtayı kır (poşe).\n2. Sarımsaklı yoğurdun üzerine al.\n3. Üzerine yakılmış tereyağlı biber dök."
+    },
+    {
+        "ad": "Fırın Patates",
+        "malzemeler": "Patates, Zeytinyağı, Kekik, Pul Biber",
+        "desc": "Kızartma tadında ama çok hafif.",
+        "tar": "1. Patatesleri elma dilim doğra.\n2. Baharatlarla harmanla.\n3. 200 derecede 30 dk pişir."
+    },
+    {
+        "ad": "Patates Salatası",
+        "malzemeler": "Patates, Taze Soğan, Maydanoz, Limon, Zeytinyağı",
+        "desc": "Çay saatlerinin yıldızı.",
+        "tar": "1. Patatesleri haşla küp doğra.\n2. Yeşillikleri ince kıy ekle.\n3. Sosunu dök karıştır."
+    },
+    {
+        "ad": "Kıymalı Patates Oturtma",
+        "malzemeler": "Patates, Kıyma, Soğan, Salça",
+        "desc": "Akşama doyurucu ana yemek.",
+        "tar": "1. Patatesleri halka doğra hafif kızart.\n2. Kıymalı harç hazırla.\n3. Tepsiye diz fırına ver."
+    },
+    {
+        "ad": "Köri Soslu Tavuk",
+        "malzemeler": "Tavuk Göğsü, Krema, Köri, Karabiber",
+        "desc": "Dünya mutfağından lezzet.",
+        "tar": "1. Tavukları sotele.\n2. Kremayı ve köriyi ekle.\n3. Sos kıvam alana kadar pişir."
+    },
+    {
+        "ad": "Tavuk Sote",
+        "malzemeler": "Tavuk Göğsü, Domates, Biber, Soğan",
+        "desc": "Klasik ve garantili lezzet.",
+        "tar": "1. Tavukları suyunu çekene kadar pişir.\n2. Sebzeleri ekle kavur.\n3. Baharatları at, servise hazır."
+    },
+    {
+        "ad": "Salçalı Makarna",
+        "malzemeler": "Makarna, Salça, Nane, Sıvı Yağ",
+        "desc": "Öğrenci evinin kralı.",
+        "tar": "1. Makarnayı haşla.\n2. Yağda salça ve naneyi yak.\n3. Karıştır."
+    },
+    {
+        "ad": "Kremalı Mantarlı Makarna",
+        "malzemeler": "Makarna, Mantar, Krema, Kaşar",
+        "desc": "İtalyan restoranı havasında.",
+        "tar": "1. Mantarları sotele.\n2. Krema ekle kaynat.\n3. Makarnayla buluştur."
+    },
+    {
+        "ad": "Fırın Sütlaç",
+        "malzemeler": "Süt, Pirinç, Şeker, Nişasta",
+        "desc": "Üzeri nar gibi kızarmış.",
+        "tar": "1. Pirinci haşla, sütü ekle.\n2. Şekeri ve nişastayı kat.\n3. Kaselere koy fırınla."
+    },
+    {
+        "ad": "Krep (Akıtma)",
+        "malzemeler": "Un, Süt, Yumurta, Tuz",
+        "desc": "İster tatlı ister tuzlu ye.",
+        "tar": "1. Tüm malzemeleri çırp.\n2. Tavaya kepçeyle dök.\n3. Arkalı önlü pişir."
+    },
+    {
+        "ad": "Mücver",
+        "malzemeler": "Kabak, Yumurta, Un, Dereotu, Peynir",
+        "desc": "Kabağın en güzel hali.",
+        "tar": "1. Kabağı rendele suyunu sık.\n2. Malzemeleri karıştır.\n3. Kaşık kaşık kızgın yağa dök."
+    },
+    # Buraya yüzlerce tarif eklenebilir...
+]
 
-# --- ARAYÜZ (GÖVDE) ---
+# --- ARAMA MOTORU ---
+def tarifleri_bul(girdi):
+    girdi = girdi.lower()
+    bulunanlar = []
+    
+    for tarif in TUM_TARIFLER:
+        # Hem isminde hem malzeme listesinde arar
+        # Örn: "Yumurta" yazınca hem Menemen (içinde var) hem Omlet çıkar.
+        if girdi in tarif["malzemeler"].lower() or girdi in tarif["ad"].lower():
+            bulunanlar.append(tarif)
+            
+    return bulunanlar
+
+# --- ARAYÜZ ---
 st.title("👨‍🍳 Dolap Şefi")
-st.caption("Yapay Zeka Destekli Sosyal Mutfak")
+st.caption("Karar veremeyenler için sosyal mutfak.")
 
 tab1, tab2 = st.tabs(["🔥 Tarif Bulucu", "🌟 Vitrin"])
 
-# ================= TAB 1 =================
+# ================= TAB 1: ANA EKRAN =================
 with tab1:
-    malzemeler = st.text_input("Dolabında neler var?", placeholder="Örn: Patates, Tavuk, Süt...")
-    
-    if st.button("🔍 Tarif Bul", type="primary"):
-        if not malzemeler:
-            st.warning("Malzeme yazmadın şefim!")
-        else:
-            with st.spinner("Şef senin için en iyi tarifi seçiyor..."):
-                time.sleep(1.0) # Yapay zeka taklidi (Havalı olsun diye)
-                st.session_state.secilen_tarif = tarif_bulucu(malzemeler)
+    # Eğer detay açık değilse ARAMA EKRANI
+    if st.session_state.secilen_tarif is None:
+        malzemeler = st.text_input("Dolabında ne var?", placeholder="Örn: Yumurta, Patates, Tavuk...")
+        
+        if st.button("🔍 Tarifleri Listele", type="primary"):
+            if not malzemeler:
+                st.warning("Bir malzeme yazmalısın!")
+            else:
+                with st.spinner("Tarif defteri taranıyor..."):
+                    time.sleep(0.3)
+                    sonuclar = tarifleri_bul(malzemeler)
+                    st.session_state.sonuclar = sonuclar
+                    
+                    if not sonuclar:
+                        st.error("Üzgünüm, bu malzemeyle kayıtlı bir tarif bulamadım. Başka bir şey dene!")
+
+        # SONUÇLARI LİSTELE (LİMİTSİZ)
+        if st.session_state.sonuclar:
+            sayi = len(st.session_state.sonuclar)
+            st.markdown(f"### 🎉 {sayi} Tarif Bulundu:")
+            
+            for i, tarif in enumerate(st.session_state.sonuclar):
+                col1, col2 = st.columns([3, 1])
                 
-    if st.session_state.secilen_tarif:
+                with col1:
+                    st.markdown(f"""
+                    <div class="haber-kart">
+                        <h3 style="margin:0; color:#f27a1a;">{tarif['ad']}</h3>
+                        <p style="margin:5px 0 10px 0; color:#ccc;"><i>{tarif['desc']}</i></p>
+                        <p style="font-size:13px;"><b>Gerekli Malzemeler:</b><br>{tarif['malzemeler']}</p>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    # Butonları dikey ortalamak için boşluk
+                    st.write("") 
+                    st.write("")
+                    if st.button("Tarife Git 👉", key=f"btn_{i}"):
+                        st.session_state.secilen_tarif = tarif
+                        st.rerun()
+
+    # DETAY EKRANI
+    else:
         yemek = st.session_state.secilen_tarif
-        st.success(f"🍽️ {yemek['ad']}")
+        
+        if st.button("⬅️ Geri Dön"):
+            st.session_state.secilen_tarif = None
+            st.rerun()
+            
+        st.divider()
+        st.header(f"🍽️ {yemek['ad']}")
         st.info(f"💡 {yemek['desc']}")
         
+        # Malzemeleri belirgin kutuda göster
+        st.warning(f"🛒 **İhtiyaç Listesi:** {yemek['malzemeler']}")
+        
+        # Tarifi Göster
         st.markdown(f"""
-        <div style='background:rgba(255,255,255,0.1); padding:20px; border-radius:10px; font-size:16px; line-height:1.6;'>
+        <div style='background:rgba(255,255,255,0.05); padding:25px; border-radius:15px; font-size:16px; line-height:1.8;'>
             {yemek['tar']}
         </div>
         """, unsafe_allow_html=True)
         
-        # PARA KAZANMA BUTONU
-        arama_terimi = malzemeler.split(',')[0]
-        link_trendyol = f"https://www.trendyol.com/sr?q={arama_terimi}"
-        
+        # Trendyol Linki
+        link = f"https://www.trendyol.com/sr?q={malzemeler.split(',')[0]}"
         st.markdown(f"""
-            <a href="{link_trendyol}" target="_blank" class="btn-trendyol">
-                🛒 Malzemeleri Trendyol'dan Söyle
+            <a href="{link}" target="_blank" class="btn-trendyol">
+                🛒 Eksik Malzemeleri Tamamla (Trendyol)
             </a>
-            <p style='text-align:center; font-size:12px; color:#aaa; margin-top:5px;'>
-                *Sponsorlu Link
-            </p>
         """, unsafe_allow_html=True)
 
 # ================= TAB 2: VİTRİN =================
 with tab2:
     st.header("🌟 Haftanın Yıldızları")
-    # Vitrin 1
     with st.container():
         st.markdown("""
-        <div class="vitrin-card">
+        <div class="haber-kart">
             <h3>🍝 Berkecan'ın Makarnası</h3>
-            <p><i>"Öğrenci evi usulü ama gurme lezzetinde!"</i></p>
             <p>⭐️⭐️⭐️⭐️⭐️ (124 Beğeni)</p>
         </div>""", unsafe_allow_html=True)
         st.video("https://www.w3schools.com/html/mov_bbb.mp4")
     
-    # Vitrin 2
-    with st.container():
-        st.markdown("""
-        <div class="vitrin-card">
-            <h3>🥞 Ayşe Teyze'nin Krepi</h3>
-            <p><i>"Torunlarım bayılıyor, içine sevgimi kattım."</i></p>
-            <p>⭐️⭐️⭐️⭐️ (89 Beğeni)</p>
-        </div>""", unsafe_allow_html=True)
-
     st.markdown("---")
     st.write("Sen de tarifini yükle:")
-    with st.form("upload_form"):
+    with st.form("upload"):
         st.text_input("Adın")
         st.file_uploader("Video")
         if st.form_submit_button("Gönder"):
-            st.success("Tarifin alındı! Onaylandıktan sonra yayınlanacak.")
+            st.success("Gönderildi!")
             time.sleep(2)
             st.rerun()
