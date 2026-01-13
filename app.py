@@ -25,50 +25,36 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # --- API ANAHTARI ---
-api_key = None
 if "GOOGLE_API_KEY" in st.secrets:
     api_key = st.secrets["GOOGLE_API_KEY"]
 else:
     api_key = st.sidebar.text_input("Google API Key", type="password")
 
-# --- AKILLI FONKSİYON (TANK MODU 🛡️) ---
+# --- AKILLI FONKSİYON (DÜZELTİLMİŞ) ---
 def yapay_zekaya_sor(prompt, key):
-    # Sırayla denenecek modeller. Biri bozuksa diğeri devreye girer.
-    modeller = ["gemini-1.5-flash", "gemini-pro", "gemini-1.0-pro", "gemini-1.5-pro"]
-    
-    headers = {'Content-Type': 'application/json'}
+    model = "gemini-1.5-flash"  # SADECE ÇALIŞAN MODEL
+    headers = {"Content-Type": "application/json"}
     data = {"contents": [{"parts": [{"text": prompt}]}]}
-    
-    son_hata = ""
-    
-    for model_ismi in modeller:
-        try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_ismi}:generateContent?key={key}"
-            response = requests.post(url, headers=headers, json=data)
-            
-            if response.status_code == 200:
-                # Başarılı olduysa cevabı döndür ve döngüden çık
-                return response.json()['candidates'][0]['content']['parts'][0]['text']
-            else:
-                # Hata aldıysak not et ve bir sonraki modele geç
-                son_hata = f"Model ({model_ismi}) Hatası: {response.status_code}"
-                continue 
-                
-        except Exception as e:
-            son_hata = f"Bağlantı sorunu: {str(e)}"
-            continue
 
-    # Hiçbiri çalışmadıysa son hatayı döndür
-    return f"⚠️ Üzgünüm, Google sunucularına ulaşılamadı. Son hata: {son_hata}"
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+        response = requests.post(url, headers=headers, json=data)
 
-# --- BAŞLIK ---
+        if response.status_code == 200:
+            return response.json()["candidates"][0]["content"]["parts"][0]["text"]
+        else:
+            return f"⚠️ Google API Hatası: {response.text}"
+
+    except Exception as e:
+        return f"⚠️ Bağlantı Hatası: {str(e)}"
+
+# --- ARAYÜZ ---
 st.title("👨‍🍳 Dolap Şefi")
 st.caption("Yapay Zeka Destekli Sosyal Mutfak Platformu")
 
-# --- SEKMELER ---
 tab1, tab2 = st.tabs(["🔥 Şef'e Sor (AI)", "🌟 Sizden Gelenler (Vitrin)"])
 
-# ================= TAB 1: AI & TARİF =================
+# ================= TAB 1 =================
 with tab1:
     col1, col2 = st.columns([3, 1])
     with col1:
@@ -87,56 +73,47 @@ with tab1:
             with st.spinner("Şef senin için menü oluşturuyor..."):
                 ozellik = "çok ekonomik ve pratik" if butce_modu else "gurme lezzetinde"
                 prompt = f"""
-                Sen bir şefsin. Malzemeler: {malzemeler}.
-                Bana {ozellik} 3 FARKLI yemek fikri ver.
-                Sadece listele:
-                1. Yemek Adı (Kısa Açıklama)
-                2. Yemek Adı (Kısa Açıklama)
-                3. Yemek Adı (Kısa Açıklama)
+                Sen bir şefsin.
+                Malzemeler: {malzemeler}.
+                Bana {ozellik} 3 yemek fikri ver.
+                Sadece isim ve kısa açıklama listele.
                 """
                 cevap = yapay_zekaya_sor(prompt, api_key)
-                
+
                 if "⚠️" in cevap:
                     st.error(cevap)
                 else:
-                    st.session_state.oneriler = cevap.split('\n')
-                    st.session_state.tam_tarif = "" 
+                    st.session_state.oneriler = cevap.split("\n")
+                    st.session_state.tam_tarif = ""
                     st.rerun()
 
-    # SEÇİM VE TARİF
     if st.session_state.oneriler:
         st.divider()
         st.subheader("🤔 Hangisini yapalım?")
         temiz_oneriler = [x for x in st.session_state.oneriler if len(x) > 5]
-        
+
         if temiz_oneriler:
             secim = st.radio("Bir menü seç:", temiz_oneriler)
-            
+
             if st.button("🍳 Tarifini Getir"):
                 with st.spinner("Tarif yazılıyor..."):
                     prompt_tarif = f"Seçilen yemek: {secim}. Malzemeler: {malzemeler}. Detaylı tarif yaz."
-                    cevap_tarif = yapay_zekaya_sor(prompt_tarif, api_key)
-                    
-                    if "⚠️" in cevap_tarif:
-                        st.error(cevap_tarif)
-                    else:
-                        st.session_state.tam_tarif = cevap_tarif
-                        st.rerun()
+                    st.session_state.tam_tarif = yapay_zekaya_sor(prompt_tarif, api_key)
+                    st.rerun()
 
-    # SONUÇ EKRANI
     if st.session_state.tam_tarif:
-        st.success("Afiyet olsun! İşte tarifin:")
-        st.markdown(f"<div style='background:rgba(255,255,255,0.05); padding:20px; border-radius:10px;'>{st.session_state.tam_tarif}</div>", unsafe_allow_html=True)
-        
-        arama_terimi = malzemeler.split(',')[0]
-        link = f"https://www.trendyol.com/sr?q={arama_terimi}"
+        st.success("Afiyet olsun!")
+        st.markdown(
+            f"<div style='background:rgba(255,255,255,0.05); padding:20px; border-radius:10px;'>{st.session_state.tam_tarif}</div>",
+            unsafe_allow_html=True
+        )
+        link = f"https://www.trendyol.com/sr?q={malzemeler.split(',')[0]}"
         st.markdown(f"""<a href="{link}" target="_blank" class="buy-btn">🛒 Malzemeleri Trendyol'dan Söyle</a>""", unsafe_allow_html=True)
 
-# ================= TAB 2: VİTRİN =================
+# ================= TAB 2 =================
 with tab2:
     st.header("🌟 Haftanın Yıldız Şefleri")
-    
-    # Hata veren girintiyi düzelttik:
+
     with st.container():
         st.markdown("""
         <div class="vitrin-card">
@@ -146,10 +123,8 @@ with tab2:
             <p>⭐️⭐️⭐️⭐️⭐️ (124 Beğeni)</p>
         </div>
         """, unsafe_allow_html=True)
-        # Demo Video
-        st.video("https://www.w3schools.com/html/mov_bbb.mp4") 
+        st.video("https://www.w3schools.com/html/mov_bbb.mp4")
 
-    # Örnek 2
     with st.container():
         st.markdown("""
         <div class="vitrin-card">
@@ -159,11 +134,10 @@ with tab2:
             <p>⭐️⭐️⭐️⭐️ (89 Beğeni)</p>
         </div>
         """, unsafe_allow_html=True)
-        st.video("https://www.w3schools.com/html/mov_bbb.mp4") 
 
     st.markdown("---")
     st.subheader("📹 Sen de Yükle!")
-    
+
     with st.form("upload_vitrin"):
         st.text_input("Kullanıcı Adın")
         st.file_uploader("Video Seç")
