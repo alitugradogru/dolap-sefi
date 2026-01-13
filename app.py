@@ -1,110 +1,189 @@
 import streamlit as st
 import google.generativeai as genai
+import time
 
-# Sayfa Ayarları
-st.set_page_config(page_title="Dolap Şefi AI", page_icon="👨‍🍳", layout="centered")
+# --- SAYFA AYARLARI ---
+st.set_page_config(page_title="Dolap Şefi", page_icon="👨‍🍳", layout="centered")
 
-# --- TASARIM ---
+# --- OTURUM DURUMU (HAFIZA) ---
+# Sayfa yenilendiğinde seçenekler kaybolmasın diye hafıza tutuyoruz
+if 'oneriler' not in st.session_state:
+    st.session_state.oneriler = []
+if 'secilen_yemek' not in st.session_state:
+    st.session_state.secilen_yemek = None
+if 'tam_tarif' not in st.session_state:
+    st.session_state.tam_tarif = ""
+
+# --- PREMIUM TASARIM (CSS) ---
 st.markdown("""
     <style>
-    .stButton>button { width: 100%; background-color: #f27a1a; color: white; padding: 15px; border-radius: 12px; border: none; font-weight: bold; font-size: 18px; transition: 0.3s; }
-    .stButton>button:hover { background-color: #d66912; transform: scale(1.02); }
-    .card { background-color: #262730; padding: 20px; border-radius: 15px; border: 1px solid #444; margin-top: 20px; }
+    /* Genel Arka Plan ve Yazı Tipi */
+    .stApp {
+        background: linear-gradient(to bottom, #141e30, #243b55);
+        color: white;
+    }
+    
+    /* Başlık Stili */
+    h1 {
+        text-align: center;
+        font-family: 'Helvetica Neue', sans-serif;
+        font-weight: 700;
+        color: #f27a1a;
+        text-shadow: 2px 2px 4px #000000;
+        font-size: 3rem !important;
+    }
+    
+    /* Sekme (Tab) Tasarımı */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 20px;
+        justify-content: center;
+    }
+    .stTabs [data-baseweb="tab"] {
+        background-color: rgba(255,255,255,0.1);
+        border-radius: 10px;
+        padding: 10px 20px;
+        color: white;
+    }
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
+        background-color: #f27a1a;
+        color: white;
+    }
+    
+    /* Kart Tasarımı */
+    .tarif-card {
+        background-color: rgba(255, 255, 255, 0.05);
+        padding: 25px;
+        border-radius: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        margin-top: 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    
+    /* Butonlar */
+    .stButton>button {
+        width: 100%;
+        border-radius: 12px;
+        font-weight: bold;
+        transition: 0.3s;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-st.title("🤖 Dolap Şefi: AI Modu")
-
-# --- GÜVENLİK VE AYARLAR ---
+# --- API ANAHTARI KONTROLÜ ---
 if "GOOGLE_API_KEY" in st.secrets:
     api_key = st.secrets["GOOGLE_API_KEY"]
 else:
-    st.error("🚨 API Anahtarı bulunamadı! Lütfen Streamlit Secrets ayarlarını kontrol et.")
-    st.stop()
+    # Secrets yoksa yine de çalışsın diye manuel giriş (Geliştirici modu)
+    api_key = st.sidebar.text_input("API Key Giriniz", type="password")
 
-# --- DEDEKTİF MODU (MOD EL SEÇİMİ) 🕵️‍♂️ ---
-# Burası hatayı çözen kısım. Modele biz karar vermiyoruz, sisteme soruyoruz.
-try:
-    genai.configure(api_key=api_key)
+# --- MODEL SEÇİMİ (OTOMATİK) ---
+if api_key:
+    try:
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel('gemini-1.5-flash') # Hızlı model
+    except:
+        st.error("Model bağlantısı kurulamadı.")
+
+# --- BAŞLIK ---
+st.title("👨‍🍳 Dolap Şefi")
+st.markdown("<p style='text-align: center; opacity: 0.8;'>Mutfağın Patronu Sensin!</p>", unsafe_allow_html=True)
+
+# --- SEKME SİSTEMİ ---
+tab1, tab2 = st.tabs(["🤖 Şef'e Sor", "📹 Sizden Gelenler"])
+
+# ================= TAB 1: YAPAY ZEKA ŞEF =================
+with tab1:
+    st.write("")
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        malzemeler = st.text_input("Dolabında neler var?", placeholder="Örn: Tavuk, krema, mantar...")
+    with col2:
+        st.write("")
+        st.write("")
+        butce_modu = st.checkbox("💸 Öğrenci İşi")
+
+    # ADIM 1: SEÇENEKLERİ GETİR
+    if st.button("🔍 Bana Fikir Ver", type="primary"):
+        if not api_key:
+            st.error("Lütfen API Anahtarını girin.")
+        elif not malzemeler:
+            st.warning("Malzeme girmeden yemek yapamayız şefim!")
+        else:
+            try:
+                with st.spinner("Şef senin için menü oluşturuyor..."):
+                    ozellik = "çok ucuz, pratik ve öğrenci dostu" if butce_modu else "lezzetli ve gurme"
+                    
+                    prompt_secenek = f"""
+                    Sen profesyonel bir şefsin. Elimdeki malzemeler: {malzemeler}.
+                    Bana bu malzemelerle yapabileceğim {ozellik} 3 FARKLI yemek fikri ver.
+                    
+                    Sadece yemek isimlerini ve yanına 3-4 kelimelik kısa açıklama yaz.
+                    Format şöyle olsun:
+                    1. Yemek Adı - Kısa Açıklama
+                    2. Yemek Adı - Kısa Açıklama
+                    3. Yemek Adı - Kısa Açıklama
+                    """
+                    
+                    response = model.generate_content(prompt_secenek)
+                    # Seçenekleri listeye at
+                    st.session_state.oneriler = response.text.split('\n')
+                    st.session_state.tam_tarif = "" # Eski tarifi temizle
+                    st.rerun() # Sayfayı yenile ki seçenekler görünsün
+            except Exception as e:
+                st.error(f"Hata: {e}")
+
+    # ADIM 2: KULLANICI SEÇİMİ VE TARİF
+    if st.session_state.oneriler:
+        st.markdown("---")
+        st.subheader("🤔 Hangisini yapalım?")
+        
+        # Seçenekleri temizle (Boş satırları at)
+        temiz_oneriler = [x for x in st.session_state.oneriler if len(x) > 5]
+        
+        secim = st.radio("Bir menü seç:", temiz_oneriler)
+        
+        if st.button("🍳 Tarifini Getir"):
+            try:
+                with st.spinner(f"{secim} için tarif yazılıyor..."):
+                    prompt_tarif = f"""
+                    Kullanıcı şu yemeği seçti: {secim}.
+                    Malzemeler: {malzemeler}.
+                    
+                    Lütfen bu yemek için detaylı, adım adım, samimi bir dille tarif yaz.
+                    Malzeme listesini net ver.
+                    Püf noktası eklemeyi unutma.
+                    """
+                    response_tarif = model.generate_content(prompt_tarif)
+                    st.session_state.tam_tarif = response_tarif.text
+                    st.rerun()
+            except Exception as e:
+                st.error("Tarif getirilemedi.")
+
+    # ADIM 3: SONUÇ EKRANI
+    if st.session_state.tam_tarif:
+        st.markdown(f"<div class='tarif-card'>", unsafe_allow_html=True)
+        st.markdown(st.session_state.tam_tarif)
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# ================= TAB 2: SİZDEN GELENLER (UPLOAD) =================
+with tab2:
+    st.header("📹 Kendi Tarifini Paylaş")
+    st.markdown("Yaptığın yemeğin videosunu veya tarifini yükle, Dolap Şefi topluluğunda yayınlansın!")
     
-    # Sol menüye bilgi basalım (Hata ayıklamak için)
-    with st.sidebar:
-        st.caption(f"🔧 Kütüphane Sürümü: {genai.__version__}")
+    with st.form("upload_form"):
+        kullanici_adi = st.text_input("Adın Soyadın / Takma Adın")
+        yemek_basligi = st.text_input("Yemeğin Adı")
+        video_dosyasi = st.file_uploader("Video Yükle (MP4)", type=['mp4', 'mov'])
+        kendi_tarifin = st.text_area("Tarifini Buraya Yaz")
         
-        # Google'a sor: Hangi modellerin var?
-        uygun_modeller = []
-        for m in genai.list_models():
-            if 'generateContent' in m.supported_generation_methods:
-                uygun_modeller.append(m.name)
+        gonder = st.form_submit_button("🚀 Gönder")
         
-        # En iyi modeli otomatik seç
-        secilen_model = ""
-        if 'models/gemini-1.5-flash' in uygun_modeller:
-            secilen_model = 'gemini-1.5-flash'
-        elif 'models/gemini-pro' in uygun_modeller:
-            secilen_model = 'gemini-pro'
-        elif uygun_modeller:
-            secilen_model = uygun_modeller[0] # Listede ne varsa onu al
-            
-        st.success(f"✅ Bağlanan Beyin: {secilen_model}")
-
-except Exception as e:
-    st.sidebar.error(f"Bağlantı Hatası: {e}")
-    secilen_model = None
-
-# --- EKRAN VE İŞLEM ---
-malzemeler = st.text_input("Dolabında neler var?", placeholder="Örn: Yumurta, soğan, salça...")
-butce_modu = st.checkbox("💸 Öğrenci İşi")
-generate_btn = st.button("✨ Yapay Zekaya Tarif Yazdır")
-
-if generate_btn:
-    if not secilen_model:
-        st.error("⚠️ Uygun bir yapay zeka modeli bulunamadı. Lütfen sayfayı yenile.")
-    elif not malzemeler:
-        st.warning("⚠️ Malzeme yazmadın şefim!")
-    else:
-        try:
-            with st.spinner("👨‍🍳 Şef düşünüyor..."):
-                model = genai.GenerativeModel(secilen_model)
-                ozellik = "öğrenci dostu, ucuz" if butce_modu else "lezzetli"
-                
-                prompt = f"""
-                Sen bir şefsin. Malzemeler: {malzemeler}.
-                Bana {ozellik} tek bir yemek tarifi ver.
-                Format:
-                YEMEK ADI: ...
-                KATEGORİ: (Tavuk/Et/Sebze/Tatlı/Makarna/Genel)
-                TARİF: ...
-                """
-                
-                response = model.generate_content(prompt)
-                text = response.text
-                
-                # Basit Parçalama
-                yemek_adi = "Sürpriz Yemek"
-                kategori = "Genel"
-                if "YEMEK ADI:" in text:
-                    for line in text.split('\n'):
-                        if "YEMEK ADI:" in line: yemek_adi = line.replace("YEMEK ADI:", "").strip()
-                        if "KATEGORİ:" in line: kategori = line.replace("KATEGORİ:", "").strip()
-
-                # Resim Seçimi
-                img_map = {
-                    "tavuk": "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=800&q=80",
-                    "et": "https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=800&q=80",
-                    "makarna": "https://images.unsplash.com/photo-1551183053-bf91b1dca038?w=800&q=80",
-                    "tatlı": "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=800&q=80"
-                }
-                # Kategoriyi bulamazsa varsayılan resim
-                img_url = next((v for k, v in img_map.items() if k in kategori.lower()), "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80")
-
+        if gonder:
+            if not video_dosyasi and not kendi_tarifin:
+                st.warning("Lütfen en azından bir video veya yazı ekle.")
+            else:
+                # Simülasyon: Gerçek sunucuya kaydetmek veritabanı gerektirir.
+                # Şimdilik kullanıcıya gitmiş gibi gösteriyoruz.
                 st.balloons()
-                with st.container():
-                    st.markdown(f"<div class='card'>", unsafe_allow_html=True)
-                    st.image(img_url, use_container_width=True)
-                    st.header(f"🍽 {yemek_adi}")
-                    st.write(text.replace(f"YEMEK ADI: {yemek_adi}", "").strip())
-                    st.markdown("</div>", unsafe_allow_html=True)
-
-        except Exception as e:
-            st.error(f"Hata oluştu: {e}")
+                st.success(f"Teşekkürler {kullanici_adi}! '{yemek_basligi}' tarifin editörlerimize iletildi. Onaylandıktan sonra yayınlanacak!")
+                time.sleep(2)
