@@ -44,25 +44,28 @@ st.markdown("<p class='subtitle'>Evdeki malzemeleri seç, sana özel gurme tarif
 # --- AKILLI RESİM FONKSİYONU 🧠 ---
 def get_smart_image(yemek_adi):
     yemek_adi = yemek_adi.lower()
-    # Kategoriye göre otomatik resim seçimi (Unsplash'tan çalışan linkler)
-    if "tavuk" in yemek_adi or "kanat" in yemek_adi:
+    # Kategoriye göre otomatik resim seçimi
+    if "tavuk" in yemek_adi or "kanat" in yemek_adi or "şinitzel" in yemek_adi:
         return "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=800&q=80" # Tavuk
     elif "balık" in yemek_adi or "somon" in yemek_adi or "hamsi" in yemek_adi:
         return "https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?w=800&q=80" # Balık
-    elif "makarna" in yemek_adi or "erişte" in yemek_adi:
+    elif "makarna" in yemek_adi or "erişte" in yemek_adi or "mantı" in yemek_adi:
         return "https://images.unsplash.com/photo-1551183053-bf91b1dca038?w=800&q=80" # Makarna
     elif "yumurta" in yemek_adi or "menemen" in yemek_adi or "omlet" in yemek_adi:
         return "https://images.unsplash.com/photo-1525351484163-7529414395d8?w=800&q=80" # Yumurta
-    elif "köfte" in yemek_adi or "burger" in yemek_adi:
+    elif "köfte" in yemek_adi or "burger" in yemek_adi or "et" in yemek_adi or "kebap" in yemek_adi:
         return "https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=800&q=80" # Et/Köfte
-    elif "salata" in yemek_adi or "piyaz" in yemek_adi:
+    elif "salata" in yemek_adi or "piyaz" in yemek_adi or "cacık" in yemek_adi:
         return "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80" # Salata
     elif "çorba" in yemek_adi:
         return "https://images.unsplash.com/photo-1547592166-23acbe34001b?w=800&q=80" # Çorba
-    elif any(x in yemek_adi for in ["kek", "pasta", "tatlı", "helva", "sütlaç", "magnolia"]):
+    # İŞTE HATAYI DÜZELTTİĞİM YER 👇 (x eksikti)
+    elif any(x in yemek_adi for x in ["kek", "pasta", "tatlı", "helva", "sütlaç", "magnolia", "revani", "brownie"]):
         return "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=800&q=80" # Tatlı
-    elif "pilav" in yemek_adi or "bulgur" in yemek_adi:
+    elif "pilav" in yemek_adi or "bulgur" in yemek_adi or "kısır" in yemek_adi:
         return "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800&q=80" # Pilav/Bakliyat
+    elif "börek" in yemek_adi or "poğaça" in yemek_adi or "tost" in yemek_adi:
+        return "https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=800&q=80" # Hamur İşi
     else:
         return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80" # Varsayılan (Bowl)
 
@@ -107,17 +110,14 @@ if bul_butonu:
         
         if eslesenler:
             st.success(f"🎉 {len(eslesenler)} tarif bulundu.")
-            for yemek in eslesenler:
-                if butce_modu and yemek['Maliyet'] > 50: continue
+            for index, row in pd.DataFrame(eslesenler).iterrows():
+                if butce_modu and row['Maliyet'] > 50: continue
                 
                 # --- RESİM SEÇİMİ ---
-                # Önce CSV'deki linke bakar, bozuksa veya yoksa Akıllı Seçim yapar
                 img_url = str(row['Resim'])
                 if not img_url.startswith("http") and not img_url.startswith("img/"):
-                     # Link yoksa akıllı tahmini kullan
                      img_url = get_smart_image(row['Yemek Adı'])
                 elif img_url.startswith("http") and "yemek.com" in img_url:
-                     # Yemek.com linkleri bozuk olduğu için direkt akıllıya geç
                      img_url = get_smart_image(row['Yemek Adı'])
                 
                 with st.container():
@@ -126,15 +126,14 @@ if bul_butonu:
                     with c1:
                         st.image(img_url, use_container_width=True)
                     with c2:
-                        st.subheader(f"🍽 {yemek['Yemek Adı']}")
-                        st.caption(f"⏱ {yemek['Zorluk']} | 🔥 {yemek['Kalori']} kcal | 💰 {yemek['Maliyet']} TL")
-                        st.write(f"**Malzemeler:** {yemek['Malzemeler']}")
-                        if 'Tarif' in yemek and pd.notna(yemek['Tarif']):
-                             with st.expander("👨‍🍳 Tarifi Gör"): st.write(yemek['Tarif'])
+                        st.subheader(f"🍽 {row['Yemek Adı']}")
+                        st.caption(f"⏱ {row['Zorluk']} | 🔥 {row['Kalori']} kcal | 💰 {row['Maliyet']} TL")
+                        st.write(f"**Malzemeler:** {row['Malzemeler']}")
+                        if 'Tarif' in row and pd.notna(row['Tarif']):
+                             with st.expander("👨‍🍳 Tarifi Gör"): st.write(row['Tarif'])
                         
-                        # --- TURUNCU BUTON ---
                         st.markdown(f"""
-                            <a href="{yemek['Link']}" target="_blank" style="text-decoration:none;">
+                            <a href="{row['Link']}" target="_blank" style="text-decoration:none;">
                                 <div style="background-color:#f27a1a; color:white; padding:10px; text-align:center; border-radius:8px; font-weight:bold; margin-top:10px; width:100%;">
                                 🛒 Eksik Malzemeleri Sipariş Et
                                 </div>
