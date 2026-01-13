@@ -4,127 +4,107 @@ import google.generativeai as genai
 # Sayfa Ayarları
 st.set_page_config(page_title="Dolap Şefi AI", page_icon="👨‍🍳", layout="centered")
 
-# --- CSS TASARIM ---
+# --- TASARIM ---
 st.markdown("""
     <style>
-    .stButton>button {
-        width: 100%;
-        background-color: #f27a1a;
-        color: white;
-        font-weight: bold;
-        border-radius: 12px;
-        padding: 15px;
-        font-size: 20px;
-        border: none;
-    }
-    .stButton>button:hover {
-        background-color: #d66912;
-        transform: scale(1.02);
-    }
-    .card {
-        background-color: #262730;
-        padding: 20px;
-        border-radius: 15px;
-        border: 1px solid #444;
-        margin-top: 20px;
-    }
+    .stButton>button { width: 100%; background-color: #f27a1a; color: white; padding: 15px; border-radius: 12px; border: none; font-weight: bold; font-size: 18px; transition: 0.3s; }
+    .stButton>button:hover { background-color: #d66912; transform: scale(1.02); }
+    .card { background-color: #262730; padding: 20px; border-radius: 15px; border: 1px solid #444; margin-top: 20px; }
     </style>
 """, unsafe_allow_html=True)
 
-# --- BAŞLIK ---
 st.title("🤖 Dolap Şefi: AI Modu")
-st.markdown("Malzemeni yaz, Yapay Zeka sana özel şef tarifi üretsin!")
 
-# --- GİZLİ ANAHTAR KONTROLÜ ---
-# Secrets içinde anahtar var mı diye bakıyoruz
+# --- GÜVENLİK VE AYARLAR ---
 if "GOOGLE_API_KEY" in st.secrets:
     api_key = st.secrets["GOOGLE_API_KEY"]
-    genai.configure(api_key=api_key)
 else:
-    # Secrets yoksa manuel giriş kutusu göster (Test için)
+    st.error("🚨 API Anahtarı bulunamadı! Lütfen Streamlit Secrets ayarlarını kontrol et.")
+    st.stop()
+
+# --- DEDEKTİF MODU (MOD EL SEÇİMİ) 🕵️‍♂️ ---
+# Burası hatayı çözen kısım. Modele biz karar vermiyoruz, sisteme soruyoruz.
+try:
+    genai.configure(api_key=api_key)
+    
+    # Sol menüye bilgi basalım (Hata ayıklamak için)
     with st.sidebar:
-        api_key = st.text_input("Google API Key", type="password", placeholder="AIzaSy... kodunu buraya gir")
-        if api_key:
-            genai.configure(api_key=api_key)
+        st.caption(f"🔧 Kütüphane Sürümü: {genai.__version__}")
+        
+        # Google'a sor: Hangi modellerin var?
+        uygun_modeller = []
+        for m in genai.list_models():
+            if 'generateContent' in m.supported_generation_methods:
+                uygun_modeller.append(m.name)
+        
+        # En iyi modeli otomatik seç
+        secilen_model = ""
+        if 'models/gemini-1.5-flash' in uygun_modeller:
+            secilen_model = 'gemini-1.5-flash'
+        elif 'models/gemini-pro' in uygun_modeller:
+            secilen_model = 'gemini-pro'
+        elif uygun_modeller:
+            secilen_model = uygun_modeller[0] # Listede ne varsa onu al
+            
+        st.success(f"✅ Bağlanan Beyin: {secilen_model}")
 
-# --- ANA EKRAN ---
-malzemeler = st.text_input("Dolabında neler var?", placeholder="Örn: Yumurta, bayat ekmek, biraz peynir...")
-butce_modu = st.checkbox("💸 Öğrenci İşi (Ekonomik Olsun)")
+except Exception as e:
+    st.sidebar.error(f"Bağlantı Hatası: {e}")
+    secilen_model = None
 
+# --- EKRAN VE İŞLEM ---
+malzemeler = st.text_input("Dolabında neler var?", placeholder="Örn: Yumurta, soğan, salça...")
+butce_modu = st.checkbox("💸 Öğrenci İşi")
 generate_btn = st.button("✨ Yapay Zekaya Tarif Yazdır")
 
-# --- RESİM SEÇİCİ FONKSİYON ---
-def get_category_image(kategori):
-    kategori = kategori.lower()
-    if "tavuk" in kategori: return "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=800&q=80"
-    if "et" in kategori or "kıyma" in kategori: return "https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=800&q=80"
-    if "sebze" in kategori or "salata" in kategori: return "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80"
-    if "tatlı" in kategori or "kahvaltı" in kategori: return "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=800&q=80"
-    if "makarna" in kategori or "hamur" in kategori: return "https://images.unsplash.com/photo-1551183053-bf91b1dca038?w=800&q=80"
-    return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80"
-
-# --- YAPAY ZEKA MANTIĞI ---
 if generate_btn:
-    if not malzemeler:
+    if not secilen_model:
+        st.error("⚠️ Uygun bir yapay zeka modeli bulunamadı. Lütfen sayfayı yenile.")
+    elif not malzemeler:
         st.warning("⚠️ Malzeme yazmadın şefim!")
-    elif not api_key:
-        st.error("⚠️ API Anahtarı eksik! Lütfen Secrets ayarını yap veya soldan anahtarı gir.")
     else:
         try:
-            with st.spinner("👨‍🍳 Şef düşünüyor... Yeni tarif icat ediliyor..."):
-                # GÜNCELLEME BURADA: Modeli 'gemini-1.5-flash' yaptık
-                model = genai.GenerativeModel('gemini-1.5-flash')
-                
-                ozellik = "öğrenci dostu, çok ucuz ve pratik" if butce_modu else "lezzetli ve doyurucu"
+            with st.spinner("👨‍🍳 Şef düşünüyor..."):
+                model = genai.GenerativeModel(secilen_model)
+                ozellik = "öğrenci dostu, ucuz" if butce_modu else "lezzetli"
                 
                 prompt = f"""
-                Sen dünyaca ünlü bir şefsin. Elimdeki malzemeler şunlar: {malzemeler}.
-                Bana bu malzemelerle yapabileceğim {ozellik} TEK BİR yaratıcı yemek tarifi ver.
-                
-                Cevabını tam olarak şu formatta ver (aralara yıldız koyma):
-                YEMEK ADI: (Buraya yemek adını yaz)
-                KATEGORİ: (Sadece şunlardan birini seç: Tavuk, Et, Sebze, Tatlı, Makarna, Genel)
-                MALİYET: (Tahmini fiyat TL)
-                KALORİ: (Tahmini kalori)
-                ZORLUK: (Kolay/Orta/Zor)
-                MALZEMELER: (Listele)
-                TARİF: (Adım adım anlat)
-                
-                Lütfen samimi ve iştah açıcı bir dil kullan.
+                Sen bir şefsin. Malzemeler: {malzemeler}.
+                Bana {ozellik} tek bir yemek tarifi ver.
+                Format:
+                YEMEK ADI: ...
+                KATEGORİ: (Tavuk/Et/Sebze/Tatlı/Makarna/Genel)
+                TARİF: ...
                 """
                 
                 response = model.generate_content(prompt)
                 text = response.text
                 
-                # Cevabı Parçala
-                lines = text.split('\n')
+                # Basit Parçalama
                 yemek_adi = "Sürpriz Yemek"
                 kategori = "Genel"
-                icerik = ""
-                
-                for line in lines:
-                    if "YEMEK ADI:" in line: yemek_adi = line.replace("YEMEK ADI:", "").strip()
-                    elif "KATEGORİ:" in line: kategori = line.replace("KATEGORİ:", "").strip()
-                    else: icerik += line + "\n"
+                if "YEMEK ADI:" in text:
+                    for line in text.split('\n'):
+                        if "YEMEK ADI:" in line: yemek_adi = line.replace("YEMEK ADI:", "").strip()
+                        if "KATEGORİ:" in line: kategori = line.replace("KATEGORİ:", "").strip()
 
-                # --- SONUÇ EKRANI ---
+                # Resim Seçimi
+                img_map = {
+                    "tavuk": "https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?w=800&q=80",
+                    "et": "https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=800&q=80",
+                    "makarna": "https://images.unsplash.com/photo-1551183053-bf91b1dca038?w=800&q=80",
+                    "tatlı": "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=800&q=80"
+                }
+                # Kategoriyi bulamazsa varsayılan resim
+                img_url = next((v for k, v in img_map.items() if k in kategori.lower()), "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80")
+
                 st.balloons()
-                img_url = get_category_image(kategori)
-                
                 with st.container():
                     st.markdown(f"<div class='card'>", unsafe_allow_html=True)
                     st.image(img_url, use_container_width=True)
                     st.header(f"🍽 {yemek_adi}")
-                    st.markdown(icerik)
-                    
-                    # Satış Linki
-                    st.markdown(f"""
-                        <a href="https://www.trendyol.com/sr?q={malzemeler.split(',')[0]}" target="_blank">
-                            <button>🛒 Eksik Malzemeleri Sipariş Et</button>
-                        </a>
-                    """, unsafe_allow_html=True)
+                    st.write(text.replace(f"YEMEK ADI: {yemek_adi}", "").strip())
                     st.markdown("</div>", unsafe_allow_html=True)
 
         except Exception as e:
-            st.error(f"Bir hata oluştu: {e}")
-            st.info("API Anahtarın doğru, sorun model ismindeydi. Şimdi çözülmüş olmalı!")
+            st.error(f"Hata oluştu: {e}")
