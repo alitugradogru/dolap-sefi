@@ -2,7 +2,7 @@ import streamlit as st
 import google.generativeai as genai
 
 # Sayfa Ayarları
-st.set_page_config(page_title="Dolap Şefi AI", page_icon="🤖", layout="centered")
+st.set_page_config(page_title="Dolap Şefi AI", page_icon="👨‍🍳", layout="centered")
 
 # --- CSS TASARIM ---
 st.markdown("""
@@ -35,14 +35,17 @@ st.markdown("""
 st.title("🤖 Dolap Şefi: AI Modu")
 st.markdown("Malzemeni yaz, Yapay Zeka sana özel şef tarifi üretsin!")
 
-# --- API ANAHTARI GİRİŞİ (Güvenlik İçin) ---
-# GitHub'a şifreni koymamak için, şifreyi siteye girince soracağız.
-with st.sidebar:
-    st.header("🔑 Şef Girişi")
-    api_key = st.text_input("Google API Key", type="password", placeholder="AIzaSy... ile başlayan kod")
-    st.caption("API anahtarını aistudio.google.com adresinden alabilirsin.")
-    st.markdown("---")
-    st.info("Bu modda hazır liste yoktur. Tarifler o an senin için **canlı** üretilir.")
+# --- GİZLİ ANAHTAR KONTROLÜ ---
+# Secrets içinde anahtar var mı diye bakıyoruz
+if "GOOGLE_API_KEY" in st.secrets:
+    api_key = st.secrets["GOOGLE_API_KEY"]
+    genai.configure(api_key=api_key)
+else:
+    # Secrets yoksa manuel giriş kutusu göster (Test için)
+    with st.sidebar:
+        api_key = st.text_input("Google API Key", type="password", placeholder="AIzaSy... kodunu buraya gir")
+        if api_key:
+            genai.configure(api_key=api_key)
 
 # --- ANA EKRAN ---
 malzemeler = st.text_input("Dolabında neler var?", placeholder="Örn: Yumurta, bayat ekmek, biraz peynir...")
@@ -58,22 +61,20 @@ def get_category_image(kategori):
     if "sebze" in kategori or "salata" in kategori: return "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80"
     if "tatlı" in kategori or "kahvaltı" in kategori: return "https://images.unsplash.com/photo-1578985545062-69928b1d9587?w=800&q=80"
     if "makarna" in kategori or "hamur" in kategori: return "https://images.unsplash.com/photo-1551183053-bf91b1dca038?w=800&q=80"
-    return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80" # Varsayılan
+    return "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80"
 
 # --- YAPAY ZEKA MANTIĞI ---
 if generate_btn:
-    if not api_key:
-        st.error("⚠️ Lütfen önce sol taraftan API Anahtarını gir!")
-    elif not malzemeler:
+    if not malzemeler:
         st.warning("⚠️ Malzeme yazmadın şefim!")
+    elif not api_key:
+        st.error("⚠️ API Anahtarı eksik! Lütfen Secrets ayarını yap veya soldan anahtarı gir.")
     else:
         try:
             with st.spinner("👨‍🍳 Şef düşünüyor... Yeni tarif icat ediliyor..."):
-                # Yapay Zekayı Ayarla
-                genai.configure(api_key=api_key)
-                model = genai.GenerativeModel('gemini-pro')
+                # GÜNCELLEME BURADA: Modeli 'gemini-1.5-flash' yaptık
+                model = genai.GenerativeModel('gemini-1.5-flash')
                 
-                # Zekaya Gönderilecek Emir (Prompt)
                 ozellik = "öğrenci dostu, çok ucuz ve pratik" if butce_modu else "lezzetli ve doyurucu"
                 
                 prompt = f"""
@@ -95,7 +96,7 @@ if generate_btn:
                 response = model.generate_content(prompt)
                 text = response.text
                 
-                # Cevabı Parçala (Basit parsing)
+                # Cevabı Parçala
                 lines = text.split('\n')
                 yemek_adi = "Sürpriz Yemek"
                 kategori = "Genel"
@@ -108,8 +109,6 @@ if generate_btn:
 
                 # --- SONUÇ EKRANI ---
                 st.balloons()
-                
-                # Resmi Kategoriye Göre Seç
                 img_url = get_category_image(kategori)
                 
                 with st.container():
@@ -118,7 +117,7 @@ if generate_btn:
                     st.header(f"🍽 {yemek_adi}")
                     st.markdown(icerik)
                     
-                    # Satış Linki (Yine çalışıyor!)
+                    # Satış Linki
                     st.markdown(f"""
                         <a href="https://www.trendyol.com/sr?q={malzemeler.split(',')[0]}" target="_blank">
                             <button>🛒 Eksik Malzemeleri Sipariş Et</button>
@@ -128,4 +127,4 @@ if generate_btn:
 
         except Exception as e:
             st.error(f"Bir hata oluştu: {e}")
-            st.info("API Anahtarının doğru olduğundan emin misin?")
+            st.info("API Anahtarın doğru, sorun model ismindeydi. Şimdi çözülmüş olmalı!")
