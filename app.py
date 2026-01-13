@@ -10,7 +10,7 @@ st.set_page_config(page_title="Dolap Şefi", page_icon="👨‍🍳", layout="ce
 if 'oneriler' not in st.session_state: st.session_state.oneriler = []
 if 'tam_tarif' not in st.session_state: st.session_state.tam_tarif = ""
 
-# --- TASARIM (Senin Sevdiğin Vitrinli Stil) ---
+# --- TASARIM (AYNI KALDI) ---
 st.markdown("""
     <style>
     .stApp { background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364); color: white; }
@@ -32,21 +32,35 @@ if "GOOGLE_API_KEY" in st.secrets:
 else:
     api_key = st.sidebar.text_input("Google API Key", type="password")
 
-# --- YENİ NESİL FONKSİYON (KÜTÜPHANESİZ) ---
+# --- AKILLI FONKSİYON (TANK MODU 🛡️) ---
 def yapay_zekaya_sor(prompt, key):
-    # Bu yöntem kütüphane gerektirmez, direkt Google sunucusuna bağlanır.
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={key}"
+    # Sırayla denenecek modeller. Biri bozuksa diğeri devreye girer.
+    modeller = ["gemini-1.5-flash", "gemini-pro", "gemini-1.0-pro"]
+    
     headers = {'Content-Type': 'application/json'}
     data = {"contents": [{"parts": [{"text": prompt}]}]}
     
-    try:
-        response = requests.post(url, headers=headers, json=data)
-        if response.status_code == 200:
-            return response.json()['candidates'][0]['content']['parts'][0]['text']
-        else:
-            return f"Hata Kodu: {response.status_code} - {response.text}"
-    except Exception as e:
-        return f"Bağlantı Hatası: {str(e)}"
+    hata_mesaji = ""
+    
+    for model_ismi in modeller:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_ismi}:generateContent?key={key}"
+            response = requests.post(url, headers=headers, json=data)
+            
+            if response.status_code == 200:
+                # Başarılı olduysa hemen cevabı döndür ve döngüden çık
+                return response.json()['candidates'][0]['content']['parts'][0]['text']
+            else:
+                # Hata aldıysak not et ve bir sonraki modele geç
+                hata_mesaji = f"Model ({model_ismi}) Hatası: {response.status_code}"
+                continue 
+                
+        except Exception as e:
+            hata_mesaji = f"Bağlantı sorunu: {str(e)}"
+            continue
+
+    # Hiçbiri çalışmadıysa son hatayı döndür
+    return f"⚠️ Üzgünüm, Google sunucularına ulaşılamadı. Son hata: {hata_mesaji}"
 
 # --- BAŞLIK ---
 st.title("👨‍🍳 Dolap Şefi")
@@ -65,7 +79,6 @@ with tab1:
         st.write("")
         butce_modu = st.checkbox("💸 Ucuz Olsun")
 
-    # BUTON 1: FİKİR VER
     if st.button("🔍 Bana 3 Fikir Ver", type="primary"):
         if not api_key:
             st.warning("⚠️ API Anahtarı eksik!")
@@ -84,7 +97,7 @@ with tab1:
                 """
                 cevap = yapay_zekaya_sor(prompt, api_key)
                 
-                if "Hata" in cevap:
+                if "⚠️" in cevap:
                     st.error(cevap)
                 else:
                     st.session_state.oneriler = cevap.split('\n')
@@ -105,7 +118,7 @@ with tab1:
                     prompt_tarif = f"Seçilen yemek: {secim}. Malzemeler: {malzemeler}. Detaylı tarif yaz."
                     cevap_tarif = yapay_zekaya_sor(prompt_tarif, api_key)
                     
-                    if "Hata" in cevap_tarif:
+                    if "⚠️" in cevap_tarif:
                         st.error(cevap_tarif)
                     else:
                         st.session_state.tam_tarif = cevap_tarif
