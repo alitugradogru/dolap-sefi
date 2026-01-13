@@ -30,20 +30,22 @@ if "GOOGLE_API_KEY" in st.secrets:
 else:
     api_key = st.sidebar.text_input("Google API Key", type="password")
 
-# --- GEMINI API (DÜZELTİLMİŞ – v1) ---
+# --- GEMINI API (DÜZELTİLDİ: v1 -> v1beta) ---
 def yapay_zekaya_sor(prompt, key):
+    # DİKKAT: Flash modeli 'v1beta' ile çalışır. GPT buraya 'v1' yazmıştı, düzelttim.
     model = "gemini-1.5-flash"
     headers = {"Content-Type": "application/json"}
     data = {"contents": [{"parts": [{"text": prompt}]}]}
 
     try:
-        url = f"https://generativelanguage.googleapis.com/v1/models/{model}:generateContent?key={key}"
+        # İşte sihirli değnek burası: v1beta yaptık
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
         response = requests.post(url, headers=headers, json=data)
 
         if response.status_code == 200:
             return response.json()["candidates"][0]["content"]["parts"][0]["text"]
         else:
-            return f"⚠️ Google API Hatası: {response.text}"
+            return f"⚠️ Google Hatası ({response.status_code}): {response.text}"
 
     except Exception as e:
         return f"⚠️ Bağlantı Hatası: {str(e)}"
@@ -73,11 +75,10 @@ with tab1:
             with st.spinner("Şef senin için menü oluşturuyor..."):
                 ozellik = "çok ekonomik ve pratik" if butce_modu else "gurme lezzetinde"
                 prompt = f"""
-Sen bir şefsin.
-Malzemeler: {malzemeler}.
-Bana {ozellik} 3 yemek fikri ver.
-Sadece isim ve kısa açıklama listele.
-"""
+                Sen bir şefsin. Malzemeler: {malzemeler}.
+                Bana {ozellik} 3 yemek fikri ver.
+                Sadece isim ve kısa açıklama listele.
+                """
                 cevap = yapay_zekaya_sor(prompt, api_key)
 
                 if "⚠️" in cevap:
