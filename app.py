@@ -137,7 +137,7 @@ with tab1:
 with tab2:
     st.header("🌟 Haftanın Yıldız Şefleri")
     
-   with st.container():
+     with st.container():
         st.markdown("""
         <div class="vitrin-card">
             <h3>🍝 Öğrenci Usulü Makarna</h3>
@@ -150,7 +150,7 @@ with tab2:
         st.video("https://www.w3schools.com/html/mov_bbb.mp4") 
 
     # Örnek 2
-    with st.container():
+      with st.container():
         st.markdown("""
         <div class="vitrin-card">
             <h3>🥞 Pazar Kahvaltısı Krepi</h3>
