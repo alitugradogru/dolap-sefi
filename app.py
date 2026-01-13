@@ -6,22 +6,22 @@ import time
 st.set_page_config(page_title="Dolap Şefi", page_icon="👨‍🍳", layout="centered")
 
 # --- HAFIZA ---
-if 'oneriler' not in st.session_state:
+if "oneriler" not in st.session_state:
     st.session_state.oneriler = []
-if 'tam_tarif' not in st.session_state:
+if "tam_tarif" not in st.session_state:
     st.session_state.tam_tarif = ""
 
 # --- TASARIM ---
 st.markdown("""
-    <style>
-    .stApp { background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364); color: white; }
-    h1 { text-align: center; color: #f27a1a; font-family: 'Arial Black', sans-serif; }
-    .stTabs [data-baseweb="tab-list"] { justify-content: center; gap: 15px; }
-    .stTabs [data-baseweb="tab"] { background-color: rgba(255,255,255,0.1); border-radius: 8px; color: white; }
-    .stTabs [data-baseweb="tab"][aria-selected="true"] { background-color: #f27a1a; color: white; }
-    .vitrin-card { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; margin-bottom: 20px; border-left: 5px solid #f27a1a; }
-    .buy-btn { display: block; width: 100%; background-color: #28a745; color: white; text-align: center; padding: 15px; border-radius: 10px; font-weight: bold; text-decoration: none; margin-top: 20px; }
-    </style>
+<style>
+.stApp { background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364); color: white; }
+h1 { text-align: center; color: #f27a1a; font-family: 'Arial Black', sans-serif; }
+.stTabs [data-baseweb="tab-list"] { justify-content: center; gap: 15px; }
+.stTabs [data-baseweb="tab"] { background-color: rgba(255,255,255,0.1); border-radius: 8px; color: white; }
+.stTabs [data-baseweb="tab"][aria-selected="true"] { background-color: #f27a1a; color: white; }
+.vitrin-card { background: rgba(255,255,255,0.05); padding: 20px; border-radius: 15px; margin-bottom: 20px; border-left: 5px solid #f27a1a; }
+.buy-btn { display: block; width: 100%; background-color: #28a745; color: white; text-align: center; padding: 15px; border-radius: 10px; font-weight: bold; text-decoration: none; margin-top: 20px; }
+</style>
 """, unsafe_allow_html=True)
 
 # --- API ANAHTARI ---
@@ -30,14 +30,14 @@ if "GOOGLE_API_KEY" in st.secrets:
 else:
     api_key = st.sidebar.text_input("Google API Key", type="password")
 
-# --- AKILLI FONKSİYON (DÜZELTİLMİŞ) ---
+# --- GEMINI API (DÜZELTİLMİŞ – v1) ---
 def yapay_zekaya_sor(prompt, key):
-    model = "gemini-1.5-flash"  # SADECE ÇALIŞAN MODEL
+    model = "gemini-1.5-flash"
     headers = {"Content-Type": "application/json"}
     data = {"contents": [{"parts": [{"text": prompt}]}]}
 
     try:
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={key}"
+        url = f"https://generativelanguage.googleapis.com/v1/models/{model}:generateContent?key={key}"
         response = requests.post(url, headers=headers, json=data)
 
         if response.status_code == 200:
@@ -73,11 +73,11 @@ with tab1:
             with st.spinner("Şef senin için menü oluşturuyor..."):
                 ozellik = "çok ekonomik ve pratik" if butce_modu else "gurme lezzetinde"
                 prompt = f"""
-                Sen bir şefsin.
-                Malzemeler: {malzemeler}.
-                Bana {ozellik} 3 yemek fikri ver.
-                Sadece isim ve kısa açıklama listele.
-                """
+Sen bir şefsin.
+Malzemeler: {malzemeler}.
+Bana {ozellik} 3 yemek fikri ver.
+Sadece isim ve kısa açıklama listele.
+"""
                 cevap = yapay_zekaya_sor(prompt, api_key)
 
                 if "⚠️" in cevap:
