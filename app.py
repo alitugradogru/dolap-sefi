@@ -193,7 +193,11 @@ with tab1:
         </div>
         """, unsafe_allow_html=True)
         
-        link = f"https://www.trendyol.com/sr?q={malzemeler.split(',')[0]}"
+        # HATA BURADAYDI, DÜZELTİLDİ:
+        # Artık 'malzemeler' değişkenini değil, seçilen yemeğin ilk malzemesini kullanıyoruz.
+        ana_malzeme = yemek['malz'].split(',')[0]
+        link = f"https://www.trendyol.com/sr?q={ana_malzeme}"
+        
         st.markdown(f"""<a href="{link}" target="_blank" class="btn-trendyol">🛒 Malzemeleri Al (Trendyol)</a>""", unsafe_allow_html=True)
 
 with tab2:
