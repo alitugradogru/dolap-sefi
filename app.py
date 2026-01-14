@@ -10,39 +10,50 @@ if "sonuclar" not in st.session_state:
 if "secilen_tarif" not in st.session_state:
     st.session_state.secilen_tarif = None 
 
-# --- TASARIM ---
+# --- TASARIM (YENİ KIRMIZI TEMA & ÖZELLİKLER) ---
 st.markdown("""
 <style>
-.stApp { background: linear-gradient(to bottom, #0f2027, #203a43, #2c5364); color: white; }
-h1 { text-align: center; color: #f27a1a; font-family: 'Arial Black', sans-serif; }
+/* 1. İŞTAH AÇICI KIRMIZI ARKA PLAN */
+.stApp { 
+    background: linear-gradient(to bottom, #8E0E00, #1F1C18); 
+    color: white; 
+}
+
+h1 { text-align: center; color: #ffcc00; font-family: 'Arial Black', sans-serif; text-shadow: 2px 2px 4px #000000; }
 
 /* Haber Kartı Tasarımı */
 .haber-kart { 
-    background: rgba(255,255,255,0.08); 
+    background: rgba(255,255,255,0.1); 
     padding: 15px; 
     border-radius: 12px; 
-    border-left: 6px solid #f27a1a;
+    border-left: 6px solid #ffcc00;
     margin-bottom: 15px;
     transition: 0.3s;
 }
-.haber-kart:hover { background: rgba(255,255,255,0.15); }
+.haber-kart:hover { background: rgba(255,255,255,0.2); transform: scale(1.01); }
 
-/* Malzeme Listesi Etiketi */
-.malzeme-etiketi {
-    background-color: #f27a1a;
-    color: white;
-    padding: 3px 8px;
-    border-radius: 5px;
-    font-size: 12px;
-    margin-right: 5px;
+/* Alt Özellik Kutuları (Resimdeki Gibi) */
+.feature-box {
+    text-align: center;
+    padding: 10px;
+    color: #ddd;
+}
+.feature-icon {
+    font-size: 30px;
+    margin-bottom: 5px;
+    display: block;
+}
+.feature-text {
+    font-weight: bold;
+    font-size: 14px;
 }
 
 .btn-trendyol { display: block; width: 100%; background-color: #28a745; color: white; text-align: center; padding: 15px; border-radius: 10px; font-weight: bold; text-decoration: none; margin-top: 20px; font-size: 18px; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- DEV TARİF HAVUZU (LİSTE YAPISI) ---
-# Buraya istediğin kadar tarif ekleyebilirsin, sistem otomatik tarar.
+# --- DEV TARİF HAVUZU ---
+# ŞEFİM, YENİ LİSTENİ ATINCA BURAYI GÜNCELLEYECEĞİZ
 TUM_TARIFLER = [
     {
         "ad": "Efsane Menemen",
@@ -55,12 +66,6 @@ TUM_TARIFLER = [
         "malzemeler": "Yumurta, Kaşar Peyniri, Tereyağı",
         "desc": "5 dakikada protein deposu.",
         "tar": "1. Yumurtaları çırp.\n2. Tavaya dök, altı pişince kaşarı ekle.\n3. İkiye katla servis et."
-    },
-    {
-        "ad": "Çılbır",
-        "malzemeler": "Yumurta, Yoğurt, Sarımsak, Tereyağı, Pul Biber",
-        "desc": "Yoğurt ve yumurtanın muhteşem uyumu.",
-        "tar": "1. Kaynayan sirkeli suya yumurtayı kır (poşe).\n2. Sarımsaklı yoğurdun üzerine al.\n3. Üzerine yakılmış tereyağlı biber dök."
     },
     {
         "ad": "Fırın Patates",
@@ -99,18 +104,6 @@ TUM_TARIFLER = [
         "tar": "1. Makarnayı haşla.\n2. Yağda salça ve naneyi yak.\n3. Karıştır."
     },
     {
-        "ad": "Kremalı Mantarlı Makarna",
-        "malzemeler": "Makarna, Mantar, Krema, Kaşar",
-        "desc": "İtalyan restoranı havasında.",
-        "tar": "1. Mantarları sotele.\n2. Krema ekle kaynat.\n3. Makarnayla buluştur."
-    },
-    {
-        "ad": "Fırın Sütlaç",
-        "malzemeler": "Süt, Pirinç, Şeker, Nişasta",
-        "desc": "Üzeri nar gibi kızarmış.",
-        "tar": "1. Pirinci haşla, sütü ekle.\n2. Şekeri ve nişastayı kat.\n3. Kaselere koy fırınla."
-    },
-    {
         "ad": "Krep (Akıtma)",
         "malzemeler": "Un, Süt, Yumurta, Tuz",
         "desc": "İster tatlı ister tuzlu ye.",
@@ -121,8 +114,7 @@ TUM_TARIFLER = [
         "malzemeler": "Kabak, Yumurta, Un, Dereotu, Peynir",
         "desc": "Kabağın en güzel hali.",
         "tar": "1. Kabağı rendele suyunu sık.\n2. Malzemeleri karıştır.\n3. Kaşık kaşık kızgın yağa dök."
-    },
-    # Buraya yüzlerce tarif eklenebilir...
+    }
 ]
 
 # --- ARAMA MOTORU ---
@@ -131,22 +123,27 @@ def tarifleri_bul(girdi):
     bulunanlar = []
     
     for tarif in TUM_TARIFLER:
-        # Hem isminde hem malzeme listesinde arar
-        # Örn: "Yumurta" yazınca hem Menemen (içinde var) hem Omlet çıkar.
         if girdi in tarif["malzemeler"].lower() or girdi in tarif["ad"].lower():
             bulunanlar.append(tarif)
             
     return bulunanlar
 
 # --- ARAYÜZ ---
+
+# 4. KOLAJ BÖLÜMÜ (Mevsimlik, iştah açıcı görseller)
+c1, c2, c3, c4 = st.columns(4)
+with c1: st.image("https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=300", use_container_width=True) # Salata
+with c2: st.image("https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=300", use_container_width=True) # Pizza
+with c3: st.image("https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=300", use_container_width=True) # Yumurta/Toast
+with c4: st.image("https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300", use_container_width=True) # Tatlı
+
 st.title("👨‍🍳 Dolap Şefi")
-st.caption("Karar veremeyenler için sosyal mutfak.")
+st.caption("Dolabındakilerle Harikalar Yarat!")
 
 tab1, tab2 = st.tabs(["🔥 Tarif Bulucu", "🌟 Vitrin"])
 
 # ================= TAB 1: ANA EKRAN =================
 with tab1:
-    # Eğer detay açık değilse ARAMA EKRANI
     if st.session_state.secilen_tarif is None:
         malzemeler = st.text_input("Dolabında ne var?", placeholder="Örn: Yumurta, Patates, Tavuk...")
         
@@ -154,43 +151,37 @@ with tab1:
             if not malzemeler:
                 st.warning("Bir malzeme yazmalısın!")
             else:
-                with st.spinner("Tarif defteri taranıyor..."):
+                with st.spinner("Lezzetler taranıyor..."):
                     time.sleep(0.3)
                     sonuclar = tarifleri_bul(malzemeler)
                     st.session_state.sonuclar = sonuclar
                     
                     if not sonuclar:
-                        st.error("Üzgünüm, bu malzemeyle kayıtlı bir tarif bulamadım. Başka bir şey dene!")
+                        st.error("Bu malzemeyle kayıtlı tarif bulamadım. Yeni malzemeler ekleyerek dene!")
 
-        # SONUÇLARI LİSTELE (LİMİTSİZ)
         if st.session_state.sonuclar:
             sayi = len(st.session_state.sonuclar)
-            st.markdown(f"### 🎉 {sayi} Tarif Bulundu:")
+            st.markdown(f"### 😋 {sayi} Leziz Tarif Bulundu:")
             
             for i, tarif in enumerate(st.session_state.sonuclar):
                 col1, col2 = st.columns([3, 1])
-                
                 with col1:
                     st.markdown(f"""
                     <div class="haber-kart">
-                        <h3 style="margin:0; color:#f27a1a;">{tarif['ad']}</h3>
-                        <p style="margin:5px 0 10px 0; color:#ccc;"><i>{tarif['desc']}</i></p>
+                        <h3 style="margin:0; color:#ffcc00;">{tarif['ad']}</h3>
+                        <p style="margin:5px 0 10px 0; color:#ddd;"><i>{tarif['desc']}</i></p>
                         <p style="font-size:13px;"><b>Gerekli Malzemeler:</b><br>{tarif['malzemeler']}</p>
                     </div>
                     """, unsafe_allow_html=True)
-                
                 with col2:
-                    # Butonları dikey ortalamak için boşluk
                     st.write("") 
                     st.write("")
                     if st.button("Tarife Git 👉", key=f"btn_{i}"):
                         st.session_state.secilen_tarif = tarif
                         st.rerun()
 
-    # DETAY EKRANI
     else:
         yemek = st.session_state.secilen_tarif
-        
         if st.button("⬅️ Geri Dön"):
             st.session_state.secilen_tarif = None
             st.rerun()
@@ -198,28 +189,21 @@ with tab1:
         st.divider()
         st.header(f"🍽️ {yemek['ad']}")
         st.info(f"💡 {yemek['desc']}")
-        
-        # Malzemeleri belirgin kutuda göster
         st.warning(f"🛒 **İhtiyaç Listesi:** {yemek['malzemeler']}")
         
-        # Tarifi Göster
         st.markdown(f"""
         <div style='background:rgba(255,255,255,0.05); padding:25px; border-radius:15px; font-size:16px; line-height:1.8;'>
             {yemek['tar']}
         </div>
         """, unsafe_allow_html=True)
         
-        # Trendyol Linki
         link = f"https://www.trendyol.com/sr?q={malzemeler.split(',')[0]}"
-        st.markdown(f"""
-            <a href="{link}" target="_blank" class="btn-trendyol">
-                🛒 Eksik Malzemeleri Tamamla (Trendyol)
-            </a>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<a href="{link}" target="_blank" class="btn-trendyol">🛒 Malzemeleri Hemen Al (Trendyol)</a>""", unsafe_allow_html=True)
 
 # ================= TAB 2: VİTRİN =================
 with tab2:
     st.header("🌟 Haftanın Yıldızları")
+    
     with st.container():
         st.markdown("""
         <div class="haber-kart">
@@ -228,6 +212,15 @@ with tab2:
         </div>""", unsafe_allow_html=True)
         st.video("https://www.w3schools.com/html/mov_bbb.mp4")
     
+    # 1. AYŞE TEYZE GERİ DÖNDÜ!
+    with st.container():
+        st.markdown("""
+        <div class="haber-kart">
+            <h3>🥞 Ayşe Teyze'nin Krepi</h3>
+            <p><i>"Torunlarım bayılıyor, içine sevgimi kattım."</i></p>
+            <p>⭐️⭐️⭐️⭐️ (89 Beğeni)</p>
+        </div>""", unsafe_allow_html=True)
+
     st.markdown("---")
     st.write("Sen de tarifini yükle:")
     with st.form("upload"):
@@ -237,3 +230,16 @@ with tab2:
             st.success("Gönderildi!")
             time.sleep(2)
             st.rerun()
+
+# --- 3. ALT ÖZELLİK KUTULARI (FOTODAKİ GİBİ) ---
+st.markdown("---")
+col_a, col_b, col_c, col_d = st.columns(4)
+
+with col_a:
+    st.markdown("""<div class="feature-box"><span class="feature-icon">⚡</span><div class="feature-text">Hızlı Öneri</div></div>""", unsafe_allow_html=True)
+with col_b:
+    st.markdown("""<div class="feature-box"><span class="feature-icon">🍃</span><div class="feature-text">Taze Fikirler</div></div>""", unsafe_allow_html=True)
+with col_c:
+    st.markdown("""<div class="feature-box"><span class="feature-icon">👨‍🍳</span><div class="feature-text">Şef Dokunuşu</div></div>""", unsafe_allow_html=True)
+with col_d:
+    st.markdown("""<div class="feature-box"><span class="feature-icon">🔥</span><div class="feature-text">Sıcak Sunum</div></div>""", unsafe_allow_html=True)
