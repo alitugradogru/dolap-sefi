@@ -16,7 +16,7 @@ def tarifleri_yukle():
             try:
                 return json.load(f)
             except json.JSONDecodeError:
-                return [] # Dosya bozuksa boş dön
+                return []
     return []
 
 def tarifi_kaydet(yeni_tarif):
@@ -36,7 +36,7 @@ if "secilen_tarif" not in st.session_state:
 st.markdown("""
 <style>
 .stApp { background: linear-gradient(to bottom, #8E0E00, #1F1C18); color: white; }
-h1 { text-align: center; color: #ffcc00; font-family: 'Arial Black', sans-serif; text-shadow: 2px 2px 4px #000000; }
+h1 { text-align: center; color: #ffcc00; font-family: 'Arial Black', sans-serif; text-shadow: 2px 2px 4px #000000; margin-top: 0px; }
 .haber-kart { 
     background: rgba(255,255,255,0.1); 
     padding: 15px; 
@@ -58,6 +58,12 @@ h1 { text-align: center; color: #ffcc00; font-family: 'Arial Black', sans-serif;
 .malzeme-kutusu ul { margin-bottom: 0; padding-left: 20px; }
 .malzeme-kutusu li { margin-bottom: 5px; }
 .btn-trendyol { display: block; width: 100%; background-color: #28a745; color: white; text-align: center; padding: 15px; border-radius: 10px; font-weight: bold; text-decoration: none; margin-top: 20px; font-size: 18px; }
+/* Logo ortalama için */
+[data-testid="stImage"] {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -125,7 +131,7 @@ def tarifleri_bul(girdi):
     # 2. Sonra KULLANICI (DOSYA) tariflerinde ara
     kullanici_tarifleri = tarifleri_yukle()
     for tarif in kullanici_tarifleri:
-        # Eski format kontrolü (malzemeler string ise listeye çevir)
+        # Eski format kontrolü
         malz_veri = tarif["malz"]
         if isinstance(malz_veri, str):
              malz_metni = malz_veri.lower()
@@ -142,8 +148,18 @@ def tarifleri_bul(girdi):
     return bulunanlar
 
 # --- ARAYÜZ ---
+
+# --- LOGO BÖLÜMÜ (EN TEPEDE) ---
+# logo.png dosyasının app.py ile aynı klasörde olduğundan emin olun!
+col_logo_sol, col_logo_orta, col_logo_sag = st.columns([1, 2, 1])
+with col_logo_orta:
+    try:
+        st.image("logo.png", use_container_width=True)
+    except:
+        st.warning("⚠️ 'logo.png' dosyası bulunamadı! Lütfen dosyayı proje klasörüne yükleyin.")
+
 st.title("👨‍🍳 Dolap Şefi")
-st.markdown("<h4 style='text-align: center; color: #ddd;'>Ne pişirsem derdine son!</h4>", unsafe_allow_html=True)
+st.markdown("<h4 style='text-align: center; color: #ddd; margin-top: -15px;'>Ne pişirsem derdine son!</h4>", unsafe_allow_html=True)
 
 tab1, tab2 = st.tabs(["🔥 Tarif Bulucu", "🌟 Vitrin (+Tarif Ekle)"])
 
