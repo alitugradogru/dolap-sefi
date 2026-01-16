@@ -180,19 +180,50 @@ h2, h3, h4 { font-weight: 600 !important; color: #f0f0f0 !important; }
 """, unsafe_allow_html=True)
 
 # --- 5. TARİF VERİTABANI ---
+# --- 5. GENİŞLETİLMİŞ TARİF VERİTABANI ---
 TUM_TARIFLER = [
-    {"ad": "Efsane Menemen", "kat": "Kahvaltı", "malz": ["3 Yumurta", "2 Domates", "3 Biber", "Yağ", "Tuz"], "desc": "Kahvaltının kralı.", "tar": "1. Biberleri kavur.\n2. Domatesi ekle pişir.\n3. Yumurtayı kır."},
-    {"ad": "Sucuklu Yumurta", "kat": "Kahvaltı", "malz": ["Yarım Kangal Sucuk", "3 Yumurta", "Tereyağı"], "desc": "Pazar sabahı klasiği.", "tar": "1. Sucukları yağda çevir.\n2. Yumurtaları kır."},
-    {"ad": "Süzme Mercimek", "kat": "Çorba", "malz": ["1 Bardak Mercimek", "1 Patates", "1 Havuç", "Soğan"], "desc": "Limon sık iç.", "tar": "1. Sebzeleri haşla, blenderdan geçir.\n2. Sos dök."},
-    {"ad": "Domates Çorbası", "kat": "Çorba", "malz": ["4 Domates", "1 Kaşık Un", "1 Bardak Süt", "Kaşar"], "desc": "Kremalı lezzet.", "tar": "1. Unu kavur, domatesi ekle.\n2. Sütle aç."},
-    {"ad": "Kuru Fasulye", "kat": "Ana Yemek", "malz": ["Fasulye", "Kuşbaşı Et", "Soğan", "Salça"], "desc": "Milli yemek.", "tar": "1. Soğan ve eti kavur.\n2. Fasulyeyi ekle pişir."},
-    {"ad": "Karnıyarık", "kat": "Ana Yemek", "malz": ["6 Patlıcan", "Kıyma", "Biber", "Domates"], "desc": "Patlıcan efsanesi.", "tar": "1. Patlıcanı kızart.\n2. İçini doldur fırınla."},
-    {"ad": "Tavuk Sote", "kat": "Tavuk", "malz": ["Tavuk Göğsü", "Biber", "Domates", "Soğan"], "desc": "Pratik akşam yemeği.", "tar": "1. Tavuğu sotele.\n2. Sebzeleri ekle pişir."},
-    {"ad": "Köri Soslu Tavuk", "kat": "Tavuk", "malz": ["Tavuk", "Krema", "Köri", "Karabiber"], "desc": "Dünya mutfağı.", "tar": "1. Tavuğu pişir.\n2. Krema ve köriyi ekle."},
-    {"ad": "Salçalı Makarna", "kat": "Makarna", "malz": ["Makarna", "Salça", "Nane", "Yağ"], "desc": "Öğrenci dostu.", "tar": "1. Makarnayı haşla.\n2. Salçalı sos yap karıştır."},
-    {"ad": "Pirinç Pilavı", "kat": "Pilav", "malz": ["Pirinç", "Şehriye", "Tereyağı", "Su"], "desc": "Tane tane.", "tar": "1. Şehriyeyi ve pirinci kavur.\n2. Suyu ekle demle."},
-    {"ad": "Sütlaç", "kat": "Tatlı", "malz": ["Süt", "Pirinç", "Şeker", "Nişasta"], "desc": "Hafif tatlı.", "tar": "1. Pirinci haşla sütü ekle.\n2. Şekeri kat pişir."},
-    {"ad": "Magnolia", "kat": "Tatlı", "malz": ["Süt", "Bisküvi", "Muz/Çilek", "Puding"], "desc": "Kupta lezzet.", "tar": "1. Pudingi yap.\n2. Bisküvi ve meyveyle diz."},
+    # --- KAHVALTILIKLAR ---
+    {"ad": "Efsane Menemen", "kat": "Kahvaltı", "malz": ["3 Yumurta", "2 Domates", "3 Biber", "Sıvı Yağ", "Tuz"], "desc": "Soğanlı mı soğansız mı? Karar senin.", "tar": "1. Biberleri doğrayıp yağda kavur.\n2. Kabuğu soyulmuş domatesleri ekle suyunu çeksin.\n3. Yumurtaları kır, ister karıştır ister bırak."},
+    {"ad": "Kuymak (Mıhlama)", "kat": "Kahvaltı", "malz": ["2 Kaşık Mısır Unu", "2 Kaşık Tereyağı", "Trabzon Peyniri", "Su"], "desc": "Karadeniz fırtınası.", "tar": "1. Tereyağında mısır ununu kavur.\n2. Suyu ekle kıvam alana kadar karıştır.\n3. Peyniri ekle, uzayana kadar pişir."},
+    {"ad": "Sucuklu Yumurta", "kat": "Kahvaltı", "malz": ["Yarım Kangal Sucuk", "3 Yumurta", "Tereyağı"], "desc": "Pazar sabahı klasiği.", "tar": "1. Sucukları dilimleyip yağda çevir (kurutma).\n2. Yumurtaları göz göz kır."},
+    {"ad": "Pankek", "kat": "Kahvaltı", "malz": ["Un", "Süt", "Yumurta", "Kabartma Tozu", "Şeker"], "desc": "Puf puf kabarır.", "tar": "1. Tüm malzemeleri boza kıvamına gelene kadar çırp.\n2. Tavaya kepçeyle dök.\n3. Göz göz olunca çevir."},
+    {"ad": "Patatesli Omlet", "kat": "Kahvaltı", "malz": ["2 Patates", "3 Yumurta", "Kaşar Peyniri", "Tuz"], "desc": "Doyurucu ve pratik.", "tar": "1. Patatesleri minik küpler halinde kızart.\n2. Çırpılmış yumurtayı üzerine dök.\n3. Kaşarı ekleyip kapağını kapat."},
+    {"ad": "Sigara Böreği", "kat": "Kahvaltı", "malz": ["Yufka", "Lor Peyniri", "Maydanoz", "Sıvı Yağ"], "desc": "Çıtır çıtır.", "tar": "1. Yufkaları üçgen kes.\n2. Harcı koyup sar, ucunu suyla yapıştır.\n3. Kızgın yağda kızart."},
+
+    # --- ÇORBALAR ---
+    {"ad": "Süzme Mercimek", "kat": "Çorba", "malz": ["1 Bardak Kırmızı Mercimek", "1 Patates", "1 Havuç", "Soğan", "Yağ"], "desc": "Lokanta usulü.", "tar": "1. Sebzeleri ve mercimeği haşla.\n2. Blenderdan geçir.\n3. Üzerine yağda nane yak."},
+    {"ad": "Ezogelin Çorbası", "kat": "Çorba", "malz": ["Mercimek", "Pirinç", "Bulgur", "Salça", "Nane"], "desc": "Geleneksel lezzet.", "tar": "1. Bakliyatları yıkayıp haşla.\n2. Ayrı yerde soğan ve salçayı kavur.\n3. Hepsini birleştir kaynat."},
+    {"ad": "Domates Çorbası", "kat": "Çorba", "malz": ["4 Domates", "1 Kaşık Un", "1 Bardak Süt", "Kaşar", "Salça"], "desc": "Kaşarlı efsane.", "tar": "1. Unu kokusu çıkana kadar kavur.\n2. Rende domates ve salçayı ekle.\n3. Suyu ver, pişince sütle bağla."},
+    {"ad": "Yayla Çorbası", "kat": "Çorba", "malz": ["Yoğurt", "Pirinç", "Un", "Yumurta", "Nane"], "desc": "Naneli ferahlık.", "tar": "1. Pirinci haşla.\n2. Yoğurt, un ve yumurtayı çırpıp ılıştırarak ekle.\n3. Kaynayınca naneli yağ dök."},
+    {"ad": "Tavuk Suyu Çorba", "kat": "Çorba", "malz": ["Tavuk But", "Tel Şehriye", "Limon", "Maydanoz"], "desc": "Şifa deposu.", "tar": "1. Tavuğu haşla ve didikle.\n2. Suyuna şehriyeleri at pişir.\n3. Tavukları ekle, limonla servis et."},
+
+    # --- ANA YEMEKLER (ET & TAVUK) ---
+    {"ad": "Kuru Fasulye", "kat": "Ana Yemek", "malz": ["Kuru Fasulye", "Kuşbaşı Et", "Soğan", "Salça", "Tereyağı"], "desc": "Pilavın en iyi arkadaşı.", "tar": "1. Fasulyeyi akşamdan ısla.\n2. Eti ve soğanı kavur, salça ekle.\n3. Fasulyeyi ekle düdüklüde pişir."},
+    {"ad": "Karnıyarık", "kat": "Ana Yemek", "malz": ["6 Patlıcan", "Kıyma", "Biber", "Domates", "Soğan"], "desc": "Patlıcanın şahı.", "tar": "1. Patlıcanları alaca soyup kızart.\n2. Ortasını açıp kıymalı harcı doldur.\n3. Salçalı suyla fırınla."},
+    {"ad": "İzmir Köfte", "kat": "Ana Yemek", "malz": ["Kıyma", "Patates", "Biber", "Domates Sos", "Ekmek İçi"], "desc": "Fırında soslu ziyafet.", "tar": "1. Köfteleri ve elma dilim patatesleri az kızart.\n2. Tepsiye diz.\n3. Üzerine domates sos döküp fırınla."},
+    {"ad": "Tavuk Sote", "kat": "Tavuk", "malz": ["Tavuk Göğsü", "Yeşil Biber", "Kırmızı Biber", "Domates", "Soğan"], "desc": "20 dakikada hazır.", "tar": "1. Tavukları suyunu çekene kadar sotele.\n2. Soğan ve biberi ekle kavur.\n3. Domates ve baharatla bitir."},
+    {"ad": "Köri Soslu Tavuk", "kat": "Tavuk", "malz": ["Tavuk Göğsü", "Sıvı Krema", "Köri", "Karabiber"], "desc": "Makarna yanına harika.", "tar": "1. Tavukları sotele.\n2. Kremayı ve 2 kaşık köriyi ekle.\n3. Sos koyulaşınca altını kapat."},
+    {"ad": "Hünkar Beğendi", "kat": "Ana Yemek", "malz": ["Kuşbaşı Et", "Patlıcan", "Un", "Süt", "Kaşar"], "desc": "Saray mutfağından.", "tar": "1. Eti soğanla yahni gibi pişir.\n2. Patlıcanı közle, beşamel sos ve kaşarla karıştır (beğendi).\n3. Beğendinin üzerine eti koy."},
+    {"ad": "Fırında Tavuk Patates", "kat": "Tavuk", "malz": ["Tavuk Baget", "Patates", "Salça", "Kekik", "Sarımsak"], "desc": "Kurtarıcı yemek.", "tar": "1. Salça, yağ ve baharatla sos yap.\n2. Tavuk ve patatesi sosla harmanla.\n3. Tepsiye diz fırınla."},
+
+    # --- SEBZE YEMEKLERİ ---
+    {"ad": "Mücver", "kat": "Ana Yemek", "malz": ["3 Kabak", "2 Yumurta", "Un", "Dereotu", "Peynir"], "desc": "Sebze sevmeyene bile yedirir.", "tar": "1. Kabağı rendele suyunu sık.\n2. Tüm malzemeleri karıştır.\n3. Kaşık kaşık kızgın yağa dök."},
+    {"ad": "Zeytinyağlı Taze Fasulye", "kat": "Ana Yemek", "malz": ["Taze Fasulye", "Domates", "Soğan", "Şeker", "Zeytinyağı"], "desc": "Soğuk yenen lezzet.", "tar": "1. Soğanı kavur fasulyeyi ekle sarart.\n2. Domates rendesi ve şekeri at.\n3. Kısık ateşte kendi suyuyla pişir."},
+    {"ad": "Ispanak Yemeği", "kat": "Ana Yemek", "malz": ["Ispanak", "Pirinç", "Soğan", "Salça", "Yoğurt"], "desc": "Temel Reis güç kaynağı.", "tar": "1. Soğanı salçayla kavur.\n2. Yıkanmış ıspanakları ekle söndür.\n3. Az pirinç ve sıcak su ekle pişir."},
+    
+    # --- MAKARNA & PİLAV ---
+    {"ad": "Salçalı Makarna", "kat": "Makarna", "malz": ["Makarna", "Domates Salçası", "Kuru Nane", "Sıvı Yağ"], "desc": "Öğrenci efsanesi.", "tar": "1. Makarnayı haşla süz.\n2. Tencerede yağ, salça ve naneyi yak.\n3. Makarnayı ekle karıştır."},
+    {"ad": "Kremalı Mantarlı Makarna", "kat": "Makarna", "malz": ["Makarna", "Mantar", "Krema", "Maydanoz"], "desc": "İtalyan restoranı gibi.", "tar": "1. Mantarları yüksek ateşte sotele.\n2. Kremayı ekle kaynat.\n3. Haşlanmış makarna ile buluştur."},
+    {"ad": "Pirinç Pilavı", "kat": "Pilav", "malz": ["Baldo Pirinç", "Arpa Şehriye", "Tereyağı", "Tavuk Suyu"], "desc": "Tane tane dökülen.", "tar": "1. Pirinci sıcak suda beklet.\n2. Şehriyeyi tereyağında kavur.\n3. Pirinci ekle, sıcak suyu ver demle."},
+    {"ad": "Meyhane Pilavı", "kat": "Pilav", "malz": ["Bulgur", "Domates", "Biber", "Soğan", "Salça"], "desc": "Yanına cacıkla gider.", "tar": "1. Soğan ve biberi kavur.\n2. Salça ve domatesi ekle.\n3. Bulguru ve suyu ekle pişir."},
+    {"ad": "Kısır", "kat": "Ana Yemek", "malz": ["İnce Bulgur", "Salça", "Nar Ekşisi", "Yeşillik", "Limon"], "desc": "Altın günlerinin yıldızı.", "tar": "1. Bulguru sıcak suyla şişir.\n2. Salçalı sosu yedir.\n3. Yeşillik ve nar ekşisini ekle."},
+
+    # --- TATLILAR ---
+    {"ad": "Fırın Sütlaç", "kat": "Tatlı", "malz": ["1 Litre Süt", "Pirinç", "Şeker", "Nişasta", "Vanilya"], "desc": "Üzeri nar gibi kızarmış.", "tar": "1. Pirinci haşla, sütü ve şekeri ekle.\n2. Nişastayla bağla.\n3. Güveçlere koyup fırında üstünü yak."},
+    {"ad": "İrmik Helvası", "kat": "Tatlı", "malz": ["İrmik", "Tereyağı", "Süt", "Şeker", "Fıstık"], "desc": "Sıcak sıcak dondurmayla.", "tar": "1. İrmiği ve fıstığı tereyağında rengi dönene kadar kavur.\n2. Sıcak sütlü şerbeti dök.\n3. Demlenmeye bırak."},
+    {"ad": "Magnolia", "kat": "Tatlı", "malz": ["Süt", "Yumurta Sarısı", "Nişasta", "Krema", "Bisküvi", "Çilek"], "desc": "Hafif ve şık.", "tar": "1. Kremasız muhallebiyi pişir soğut.\n2. Kremayı ekle çırp.\n3. Bisküvi ve meyveyle kat kat diz."},
+    {"ad": "Mozaik Pasta", "kat": "Tatlı", "malz": ["Petibör Bisküvi", "Kakao", "Tereyağı", "Süt", "Şeker"], "desc": "Pişmeyen pasta.", "tar": "1. Sos malzemelerini erit.\n2. Kırılmış bisküvilerle karıştır.\n3. Streçleyip buzluğa at."},
+    {"ad": "Islak Kek (Brownie)", "kat": "Tatlı", "malz": ["Yumurta", "Şeker", "Süt", "Yağ", "Kakao", "Un"], "desc": "Bol soslu.", "tar": "1. Keki çırpıp pişir.\n2. Kalan malzemelerle sos yap kaynat.\n3. Fırından çıkan sıcak keke dök."},
 ]
 
 def tarif_uret(malzeme):
