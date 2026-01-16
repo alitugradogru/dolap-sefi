@@ -17,13 +17,29 @@ TARIF_DOSYASI = "kullanici_tarifleri.json"
 YORUM_DOSYASI = "yorumlar.json"
 KULLANICI_DOSYASI = "kullanicilar.json"
 
-# --- 3. VERİTABANI FONKSİYONLARI ---
-def veri_yukle(dosya_adi):
+# --- 3. VERİTABANI FONKSİYONLARI (DÜZELTİLDİ) ---
+
+# Sadece LİSTE yükleyen fonksiyon (Tarifler için)
+def liste_yukle(dosya_adi):
     if os.path.exists(dosya_adi):
         with open(dosya_adi, "r", encoding="utf-8") as f:
-            try: return json.load(f)
-            except: return {} if "json" in dosya_adi else []
-    return {} if "yorum" in dosya_adi or "kullanici" in dosya_adi else []
+            try:
+                veri = json.load(f)
+                return veri if isinstance(veri, list) else []
+            except:
+                return []
+    return []
+
+# Sadece SÖZLÜK (Dictionary) yükleyen fonksiyon (Kullanıcılar ve Yorumlar için)
+def sozluk_yukle(dosya_adi):
+    if os.path.exists(dosya_adi):
+        with open(dosya_adi, "r", encoding="utf-8") as f:
+            try:
+                veri = json.load(f)
+                return veri if isinstance(veri, dict) else {}
+            except:
+                return {}
+    return {}
 
 def veri_kaydet(dosya_adi, veri):
     with open(dosya_adi, "w", encoding="utf-8") as f:
@@ -31,7 +47,7 @@ def veri_kaydet(dosya_adi, veri):
 
 # --- Kullanıcı İşlemleri ---
 def kullanici_kaydet(k_adi, sifre):
-    users = veri_yukle(KULLANICI_DOSYASI)
+    users = sozluk_yukle(KULLANICI_DOSYASI)
     if k_adi in users: return False
     users[k_adi] = sifre
     veri_kaydet(KULLANICI_DOSYASI, users)
@@ -39,18 +55,17 @@ def kullanici_kaydet(k_adi, sifre):
 
 def giris_kontrol(k_adi, sifre):
     if k_adi == "admin" and sifre == "2026": return "admin"
-    users = veri_yukle(KULLANICI_DOSYASI)
+    users = sozluk_yukle(KULLANICI_DOSYASI)
     return "user" if users.get(k_adi) == sifre else False
 
 # --- Tarif & Yorum İşlemleri ---
 def tarif_ekle(yeni):
-    mevcut = veri_yukle(TARIF_DOSYASI)
-    if isinstance(mevcut, dict): mevcut = [] # Hata önleyici
+    mevcut = liste_yukle(TARIF_DOSYASI)
     mevcut.append(yeni)
     veri_kaydet(TARIF_DOSYASI, mevcut)
 
 def tarif_sil(idx):
-    mevcut = veri_yukle(TARIF_DOSYASI)
+    mevcut = liste_yukle(TARIF_DOSYASI)
     if 0 <= idx < len(mevcut):
         del mevcut[idx]
         veri_kaydet(TARIF_DOSYASI, mevcut)
@@ -58,12 +73,12 @@ def tarif_sil(idx):
     return False
 
 def yorum_ekle(yemek, isim, mesaj):
-    data = veri_yukle(YORUM_DOSYASI)
+    data = sozluk_yukle(YORUM_DOSYASI)
     if yemek not in data: data[yemek] = []
     data[yemek].insert(0, {"isim": isim, "msg": mesaj, "tarih": datetime.now().strftime("%d-%m %H:%M")})
     veri_kaydet(YORUM_DOSYASI, data)
 
-# --- 4. CSS (PREMIUM TASARIM - İŞTAH AÇICI MOD) ---
+# --- 4. CSS (PREMIUM TASARIM) ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
@@ -80,7 +95,7 @@ h1 {
     text-shadow: 0px 4px 15px rgba(255, 69, 0, 0.4);
 }
 
-/* Kart Tasarımı (Daha Büyük ve Şık) */
+/* Kart Tasarımı */
 .haber-kart { 
     background: rgba(255, 255, 255, 0.04); 
     backdrop-filter: blur(12px); 
@@ -129,7 +144,7 @@ h1 {
 </style>
 """, unsafe_allow_html=True)
 
-# --- 5. DETAYLI & İŞTAH AÇAN TARİFLER (Özenle Yazılmış) ---
+# --- 5. DETAYLI & İŞTAH AÇAN TARİFLER ---
 SABIT_TARIFLER = [
     # KAHVALTI
     {
@@ -221,7 +236,7 @@ def tarifleri_bul(girdi, kategori):
     arananlar = [x.strip() for x in girdi.replace(",", " ").split() if x.strip()]
     
     # Veritabanlarını birleştir
-    tum_liste = SABIT_TARIFLER + veri_yukle(TARIF_DOSYASI)
+    tum_liste = SABIT_TARIFLER + liste_yukle(TARIF_DOSYASI)
     
     # Eğer arama boşsa ve kategori tümü ise -> Vitrin modunda karışık göster
     if not arananlar and kategori == "Tümü":
@@ -355,7 +370,7 @@ with t1:
                         st.rerun()
             else: st.info("Yorum yapmak için giriş yap.")
             
-            yorumlar = veri_yukle(YORUM_DOSYASI).get(t['ad'], [])
+            yorumlar = sozluk_yukle(YORUM_DOSYASI).get(t['ad'], [])
             for y in yorumlar:
                 st.markdown(f"<div class='yorum-kutu'><b>{y['isim']}</b> <small>{y['tarih']}</small><br>{y['msg']}</div>", unsafe_allow_html=True)
 
@@ -383,7 +398,7 @@ with t2:
     
     st.markdown("---")
     # Kullanıcı Tariflerini Listele (Admin Silebilir)
-    k_tarifler = veri_yukle(TARIF_DOSYASI)
+    k_tarifler = liste_yukle(TARIF_DOSYASI)
     if k_tarifler:
         for i, k in enumerate(k_tarifler):
             col_x, col_y = st.columns([4, 1])
