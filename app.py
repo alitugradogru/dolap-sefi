@@ -3,14 +3,18 @@ import time
 import json
 import os
 
-# --- SAYFA AYARLARI ---
-st.set_page_config(page_title="Dolap Şefi", page_icon="👨‍🍳", layout="centered")
+# --- 1. AYARLAR & KURULUM ---
+st.set_page_config(
+    page_title="Dolap Şefi",
+    page_icon="👨‍🍳",
+    layout="centered",
+    initial_sidebar_state="expanded"
+)
 
-# --- DOSYA KAYIT SİSTEMİ (DATABASE) ---
+# --- 2. VERİTABANI FONKSİYONLARI ---
 DOSYA_ADI = "kullanici_tarifleri.json"
 
 def tarifleri_yukle():
-    """Dosyadan kayıtlı tarifleri çeker."""
     if os.path.exists(DOSYA_ADI):
         with open(DOSYA_ADI, "r", encoding="utf-8") as f:
             try:
@@ -20,312 +24,321 @@ def tarifleri_yukle():
     return []
 
 def tarifi_kaydet(yeni_tarif):
-    """Yeni tarifi dosyaya kalıcı olarak yazar."""
     mevcut_tarifler = tarifleri_yukle()
     mevcut_tarifler.append(yeni_tarif)
     with open(DOSYA_ADI, "w", encoding="utf-8") as f:
         json.dump(mevcut_tarifler, f, ensure_ascii=False, indent=4)
 
-# --- HAFIZA ---
+# --- 3. HAFIZA ---
 if "sonuclar" not in st.session_state:
     st.session_state.sonuclar = [] 
 if "secilen_tarif" not in st.session_state:
     st.session_state.secilen_tarif = None 
 
-# --- TASARIM (KIRMIZI TEMA) ---
+# --- 4. PROFESYONEL "SENIOR DEV" TASARIMI (CSS) ---
 st.markdown("""
 <style>
-.stApp { background: linear-gradient(to bottom, #8E0E00, #1F1C18); color: white; }
-h1 { text-align: center; color: #ffcc00; font-family: 'Arial Black', sans-serif; text-shadow: 2px 2px 4px #000000; margin-top: 0px; }
+/* Google Font Import (Modern Yazılımcı Fontu: Inter) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+
+/* GENEL SAYFA YAPISI */
+.stApp {
+    background-color: #0e1117;
+    background-image: radial-gradient(circle at 50% 0%, #3a0ca3 0%, #0e1117 50%);
+    font-family: 'Inter', sans-serif;
+    color: #ffffff;
+}
+
+/* BAŞLIKLAR */
+h1 {
+    font-weight: 800 !important;
+    background: -webkit-linear-gradient(45deg, #FFCC00, #FF6B6B);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+    margin-bottom: 0px;
+    letter-spacing: -1px;
+}
+h2, h3, h4 { font-weight: 600 !important; color: #f0f0f0 !important; }
+
+/* INPUT ALANLARI (ARAMA ÇUBUĞU) */
+.stTextInput > div > div > input {
+    background-color: rgba(255, 255, 255, 0.05);
+    color: white;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 10px;
+    transition: all 0.3s ease;
+}
+.stTextInput > div > div > input:focus {
+    border-color: #FFCC00;
+    box-shadow: 0 0 15px rgba(255, 204, 0, 0.2);
+}
+
+/* GLASSMORPHISM KART TASARIMI (Buzlu Cam) */
 .haber-kart { 
-    background: rgba(255,255,255,0.1); 
-    padding: 15px; 
-    border-radius: 12px; 
-    border-left: 6px solid #ffcc00;
-    margin-bottom: 15px;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 20px; 
+    border-radius: 16px; 
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    margin-bottom: 20px;
     cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Yaylanma efekti */
+    position: relative;
+    overflow: hidden;
+}
+
+.haber-kart::before {
+    content: "";
+    position: absolute;
+    top: 0; left: 0; width: 4px; height: 100%;
+    background: linear-gradient(to bottom, #FFCC00, #FF6B6B);
+}
+
+.haber-kart:hover { 
+    transform: translateY(-5px) scale(1.02);
+    background: rgba(255, 255, 255, 0.07);
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+    border-color: rgba(255, 204, 0, 0.3);
+}
+
+/* MALZEME LİSTESİ KUTUSU */
+.malzeme-kutusu {
+    background: rgba(255, 204, 0, 0.05);
+    border: 1px dashed #FFCC00;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 25px;
+}
+.malzeme-kutusu ul { list-style-type: none; padding: 0; margin: 0; }
+.malzeme-kutusu li { 
+    padding: 8px 0; 
+    border-bottom: 1px solid rgba(255,255,255,0.05); 
+    display: flex; 
+    align-items: center;
+}
+.malzeme-kutusu li::before {
+    content: "🔸"; margin-right: 10px; font-size: 12px;
+}
+
+/* MODERN BUTONLAR (TRENDYOL & DİĞERLERİ) */
+.stButton > button {
+    width: 100%;
+    border-radius: 10px;
+    font-weight: 600;
+    border: none;
+    transition: 0.3s;
+    background-color: rgba(255,255,255,0.1);
+    color: white;
+}
+.stButton > button:hover {
+    background-color: rgba(255,255,255,0.2);
+    color: #FFCC00;
+}
+
+/* ÖZEL TRENDYOL BUTONU (HTML) */
+.btn-trendyol { 
+    display: block; width: 100%; 
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white !important; 
+    text-align: center; 
+    padding: 16px; 
+    border-radius: 12px; 
+    font-weight: 700; 
+    text-decoration: none; 
+    margin-top: 20px; 
+    font-size: 16px; 
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
     transition: 0.3s;
 }
-.haber-kart:hover { background: rgba(255,255,255,0.2); transform: scale(1.02); }
-.malzeme-kutusu {
-    background-color: rgba(255, 204, 0, 0.1);
-    border-left: 4px solid #ffcc00;
-    padding: 15px;
-    border-radius: 8px;
-    margin-bottom: 20px;
+.btn-trendyol:hover { 
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.6);
 }
-.malzeme-kutusu h4 { margin-top: 0; color: #ffcc00; }
-.malzeme-kutusu ul { margin-bottom: 0; padding-left: 20px; }
-.malzeme-kutusu li { margin-bottom: 5px; }
-.btn-trendyol { display: block; width: 100%; background-color: #28a745; color: white; text-align: center; padding: 15px; border-radius: 10px; font-weight: bold; text-decoration: none; margin-top: 20px; font-size: 18px; }
-/* Logo ortalama için */
-[data-testid="stImage"] {
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
+
+/* LOGO ORTALAMA */
+[data-testid="stImage"] { display: block; margin-left: auto; margin-right: auto; }
+
+/* SCROLLBAR TASARIMI */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #0e1117; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
+
+/* FOOTER */
+.footer { 
+    position: fixed; bottom: 0; left: 0; width: 100%; 
+    background: rgba(14, 17, 23, 0.9);
+    backdrop-filter: blur(5px);
+    border-top: 1px solid rgba(255,255,255,0.05);
+    color: #666; text-align: center; padding: 8px; font-size: 11px; z-index: 999;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 🔥 SABİT TARİF VERİTABANI ---
+# --- 5. TARİF VERİTABANI ---
 TUM_TARIFLER = [
-    # --- KAHVALTILIKLAR ---
-    {"ad": "Efsane Menemen", "kat": "Kahvaltı", "malz": ["3 Adet Yumurta", "2 Adet Domates", "3 Adet Sivri Biber", "2 Yemek Kaşığı Sıvı Yağ", "Tuz", "Karabiber"], "desc": "Kahvaltıların vazgeçilmezi.", "tar": "1. Biberleri doğrayıp yağda kavur.\n2. Domatesleri ekle suyunu çeksin.\n3. Yumurtaları kır, çok karıştırma."},
-    {"ad": "Sucuklu Yumurta", "kat": "Kahvaltı", "malz": ["Yarım Kangal Sucuk", "3 Adet Yumurta", "1 Yemek Kaşığı Tereyağı"], "desc": "Pazar sabahı klasiği.", "tar": "1. Sucukları yağda çevir.\n2. Göz göz yumurtaları kır.\n3. Sarısını patlatmadan pişir."},
-    {"ad": "Kaşarlı Omlet", "kat": "Kahvaltı", "malz": ["2 Adet Yumurta", "1 Çay Bardağı Rendelenmiş Kaşar", "1 Yemek Kaşığı Tereyağı", "Tuz"], "desc": "Uzayan lezzet.", "tar": "1. Yumurtayı çırp tavaya dök.\n2. Altı pişince kaşarı koy.\n3. Katla ve servis et."},
-    {"ad": "Patatesli Yumurta", "kat": "Kahvaltı", "malz": ["2 Orta Boy Patates", "3 Adet Yumurta", "Sıvı Yağ", "Tuz", "Pul Biber"], "desc": "Doyurucu ve pratik.", "tar": "1. Patatesleri küp küp kızart.\n2. Üzerine yumurtayı kır karıştır."},
-    {"ad": "Krep (Akıtma)", "kat": "Kahvaltı", "malz": ["2 Su Bardağı Un", "2.5 Su Bardağı Süt", "2 Adet Yumurta", "1 Çay Kaşığı Tuz"], "desc": "İster tatlı ister tuzlu.", "tar": "1. Malzemeleri akışkan olana kadar çırp.\n2. Tavaya kepçeyle dök.\n3. Arkalı önlü pişir."},
-
-    # --- ÇORBALAR ---
-    {"ad": "Süzme Mercimek", "kat": "Çorba", "malz": ["1 Su Bardağı Kırmızı Mercimek", "1 Adet Patates", "1 Adet Havuç", "1 Adet Soğan", "2 Yemek Kaşığı Yağ"], "desc": "Limon sık iç.", "tar": "1. Sebzeleri haşla, blenderdan geçir.\n2. Yağ ve nane yakıp üzerine dök."},
-    {"ad": "Ezogelin Çorbası", "kat": "Çorba", "malz": ["1 Çay Bardağı Kırmızı Mercimek", "2 Yemek Kaşığı Bulgur", "1 Yemek Kaşığı Pirinç", "Salça", "Nane"], "desc": "Lokanta usulü.", "tar": "1. Bakliyatları haşla.\n2. Ayrı yerde soğan ve salçayı kavur.\n3. Hepsini birleştir kaynat."},
-    {"ad": "Domates Çorbası", "kat": "Çorba", "malz": ["4 Adet Domates", "1 Yemek Kaşığı Un", "1 Su Bardağı Süt", "Rendelenmiş Kaşar"], "desc": "Kremalı gibi yumuşak.", "tar": "1. Unu kavur, domates rendesi ekle.\n2. Suyunu ver, pişince süt ekle.\n3. Kaşarla servis et."},
-    {"ad": "Yayla Çorbası", "kat": "Çorba", "malz": ["1 Kase Yoğurt", "1 Çay Bardağı Pirinç", "1 Yumurta Sarısı", "Kuru Nane"], "desc": "Naneli ferahlık.", "tar": "1. Pirinci haşla.\n2. Yoğurtlu terbiyeyi ılıştırarak ekle.\n3. Üzerine naneli yağ yak."},
-
-    # --- SULU YEMEKLER ---
-    {"ad": "Kuru Fasulye", "kat": "Ana Yemek", "malz": ["2 Su Bardağı Kuru Fasulye", "250gr Kuşbaşı Et", "1 Adet Soğan", "2 Yemek Kaşığı Salça"], "desc": "Milli yemeğimiz.", "tar": "1. Akşamdan ısla.\n2. Soğanla eti kavur, salça ekle.\n3. Fasulyeyi ekle düdüklüde pişir."},
-    {"ad": "Nohut Yemeği", "kat": "Ana Yemek", "malz": ["2 Su Bardağı Nohut", "250gr Et", "1 Adet Soğan", "Salça"], "desc": "Pilavın ekürisi.", "tar": "1. Eti kavur.\n2. Haşlanmış nohutu ekle.\n3. Özleşene kadar pişir."},
-    {"ad": "Taze Fasulye", "kat": "Ana Yemek", "malz": ["Yarım Kg Taze Fasulye", "2 Adet Domates", "1 Adet Soğan", "Zeytinyağı"], "desc": "Yazın vazgeçilmezi.", "tar": "1. Soğanı kavur, fasulyeyi ekle.\n2. Domatesle kısık ateşte pişir."},
-    {"ad": "Karnıyarık", "kat": "Ana Yemek", "malz": ["6 Adet Patlıcan", "300gr Kıyma", "2 Adet Biber", "1 Adet Domates", "Soğan"], "desc": "Patlıcanın kralı.", "tar": "1. Patlıcanı kızart.\n2. İçini kıymalı harçla doldur.\n3. Fırınla."},
-    {"ad": "Patates Yemeği", "kat": "Ana Yemek", "malz": ["4 Adet Patates", "1 Adet Soğan", "1 Yemek Kaşığı Salça", "Sıvı Yağ"], "desc": "En pratik tencere yemeği.", "tar": "1. Soğanı kavur.\n2. Küp patatesleri ve salçalı suyu ekle pişir."},
-
-    # --- ET & TAVUK ---
-    {"ad": "Anne Köftesi", "kat": "Et", "malz": ["Yarım Kg Kıyma", "1 Adet Soğan (Rende)", "1 Yumurta", "Bayat Ekmek İçi", "Maydanoz", "Kimyon"], "desc": "Patates kızartmasıyla.", "tar": "1. Yoğur.\n2. Şekil ver.\n3. Az yağda kızart."},
-    {"ad": "Tavuk Sote", "kat": "Tavuk", "malz": ["500gr Tavuk Göğsü", "2 Adet Biber", "1 Adet Domates", "1 Adet Soğan"], "desc": "Ekmek banmalık.", "tar": "1. Tavuğu suyunu çekene kadar pişir.\n2. Sebzelerle kavur."},
-    {"ad": "Köri Soslu Tavuk", "kat": "Tavuk", "malz": ["500gr Tavuk", "1 Kutu Krema", "1 Tatlı Kaşığı Köri", "Karabiber"], "desc": "Dünya mutfağı.", "tar": "1. Tavuğu sotele.\n2. Krema ve köri ekle çektir."},
-    {"ad": "Fırın Tavuk", "kat": "Tavuk", "malz": ["Tavuk Baget/Kanat", "Patates", "Salçalı Sos", "Kekik"], "desc": "Nar gibi kızarmış.", "tar": "1. Salçalı sosla harmanla.\n2. Tepsiye diz fırınla."},
-
-    # --- MAKARNA & PİLAV ---
-    {"ad": "Pirinç Pilavı", "kat": "Pilav", "malz": ["2 Su Bardağı Pirinç", "Yarım Çay Bardağı Şehriye", "2 Yemek Kaşığı Tereyağı", "3 Su Bardağı Sıcak Su"], "desc": "Tane tane.", "tar": "1. Şehriyeyi kavur.\n2. Pirinci kavur.\n3. Suyunu ekle demle."},
-    {"ad": "Salçalı Makarna", "kat": "Makarna", "malz": ["1 Paket Makarna", "1 Yemek Kaşığı Salça", "1 Tatlı Kaşığı Nane", "Sıvı Yağ"], "desc": "Öğrenci efsanesi.", "tar": "1. Makarnayı haşla.\n2. Yağda salça nane yak.\n3. Karıştır."},
-    {"ad": "Kremalı Mantarlı Makarna", "kat": "Makarna", "malz": ["1 Paket Makarna", "1 Paket Mantar", "1 Kutu Krema"], "desc": "İtalyan işi.", "tar": "1. Mantarı sotele.\n2. Krema ekle kaynat.\n3. Makarna ile buluştur."},
-
-    # --- TATLILAR ---
-    {"ad": "Sütlaç", "kat": "Tatlı", "malz": ["1 Litre Süt", "1 Çay Bardağı Pirinç", "1 Su Bardağı Şeker", "2 Yemek Kaşığı Nişasta"], "desc": "Anne eli değmiş.", "tar": "1. Pirinci haşla sütü ekle.\n2. Şekeri ve nişastayı kat.\n3. Kıvam alınca kaselere paylaştır."},
-    {"ad": "İrmik Helvası", "kat": "Tatlı", "malz": ["2 Su Bardağı İrmik", "125gr Tereyağı", "Şerbet (Sütlü/Su)"], "desc": "Kavrulmuş lezzet.", "tar": "1. İrmiği rengi dönene kadar kavur.\n2. Sıcak şerbeti dök demlenmeye bırak."},
-    {"ad": "Magnolia", "kat": "Tatlı", "malz": ["1 Litre Süt", "1 Su Bardağı Şeker", "2 YK Un", "2 YK Nişasta", "1 Paket Burçak Bisküvi", "Muz veya Çilek"], "desc": "Kupta modern tatlı.", "tar": "1. Muhallebi yap.\n2. Bisküvi ve meyveyle kat kat diz."},
+    {"ad": "Efsane Menemen", "kat": "Kahvaltı", "malz": ["3 Yumurta", "2 Domates", "3 Biber", "Yağ", "Tuz"], "desc": "Kahvaltının kralı.", "tar": "1. Biberleri kavur.\n2. Domatesi ekle pişir.\n3. Yumurtayı kır."},
+    {"ad": "Sucuklu Yumurta", "kat": "Kahvaltı", "malz": ["Yarım Kangal Sucuk", "3 Yumurta", "Tereyağı"], "desc": "Pazar sabahı klasiği.", "tar": "1. Sucukları yağda çevir.\n2. Yumurtaları kır."},
+    {"ad": "Süzme Mercimek", "kat": "Çorba", "malz": ["1 Bardak Mercimek", "1 Patates", "1 Havuç", "Soğan"], "desc": "Limon sık iç.", "tar": "1. Sebzeleri haşla, blenderdan geçir.\n2. Sos dök."},
+    {"ad": "Domates Çorbası", "kat": "Çorba", "malz": ["4 Domates", "1 Kaşık Un", "1 Bardak Süt", "Kaşar"], "desc": "Kremalı lezzet.", "tar": "1. Unu kavur, domatesi ekle.\n2. Sütle aç."},
+    {"ad": "Kuru Fasulye", "kat": "Ana Yemek", "malz": ["Fasulye", "Kuşbaşı Et", "Soğan", "Salça"], "desc": "Milli yemek.", "tar": "1. Soğan ve eti kavur.\n2. Fasulyeyi ekle pişir."},
+    {"ad": "Karnıyarık", "kat": "Ana Yemek", "malz": ["6 Patlıcan", "Kıyma", "Biber", "Domates"], "desc": "Patlıcan efsanesi.", "tar": "1. Patlıcanı kızart.\n2. İçini doldur fırınla."},
+    {"ad": "Tavuk Sote", "kat": "Tavuk", "malz": ["Tavuk Göğsü", "Biber", "Domates", "Soğan"], "desc": "Pratik akşam yemeği.", "tar": "1. Tavuğu sotele.\n2. Sebzeleri ekle pişir."},
+    {"ad": "Köri Soslu Tavuk", "kat": "Tavuk", "malz": ["Tavuk", "Krema", "Köri", "Karabiber"], "desc": "Dünya mutfağı.", "tar": "1. Tavuğu pişir.\n2. Krema ve köriyi ekle."},
+    {"ad": "Salçalı Makarna", "kat": "Makarna", "malz": ["Makarna", "Salça", "Nane", "Yağ"], "desc": "Öğrenci dostu.", "tar": "1. Makarnayı haşla.\n2. Salçalı sos yap karıştır."},
+    {"ad": "Pirinç Pilavı", "kat": "Pilav", "malz": ["Pirinç", "Şehriye", "Tereyağı", "Su"], "desc": "Tane tane.", "tar": "1. Şehriyeyi ve pirinci kavur.\n2. Suyu ekle demle."},
+    {"ad": "Sütlaç", "kat": "Tatlı", "malz": ["Süt", "Pirinç", "Şeker", "Nişasta"], "desc": "Hafif tatlı.", "tar": "1. Pirinci haşla sütü ekle.\n2. Şekeri kat pişir."},
+    {"ad": "Magnolia", "kat": "Tatlı", "malz": ["Süt", "Bisküvi", "Muz/Çilek", "Puding"], "desc": "Kupta lezzet.", "tar": "1. Pudingi yap.\n2. Bisküvi ve meyveyle diz."},
 ]
 
-# --- AKILLI TARİF ÜRETİCİSİ ---
 def tarif_uret(malzeme):
-    malzeme_baslik = malzeme.title()
+    m = malzeme.title()
     return {
-        "ad": f"Fırında Özel {malzeme_baslik}",
+        "ad": f"Fırında Özel {m}",
         "kat": "Şefin Spesiyali",
-        "malz": [f"{malzeme_baslik}", "Zeytinyağı", "Tuz", "Karabiber", "Kekik", "İsteğe bağlı sarımsak"],
-        "desc": "Bu malzeme ile yapabileceğin en garanti lezzet.",
-        "tar": f"1. {malzeme_baslik} güzelce yıkanır ve doğranır.\n2. Bir kapta zeytinyağı ve baharatlarla harmanlanır.\n3. Yağlı kağıt serili tepsiye dizilir.\n4. 200 derece önceden ısıtılmış fırında kızarana kadar pişirilir.\n5. Sıcak servis yapılır. Yanına yoğurt çok yakışır!"
+        "malz": [m, "Zeytinyağı", "Kekik", "Tuz", "Karabiber"],
+        "desc": "Bu malzeme ile garantili lezzet.",
+        "tar": f"1. {m} yıkanır ve doğranır.\n2. Baharatlarla harmanlanır.\n3. 200 derece fırında pişirilir."
     }
 
-# --- ARAMA MOTORU ---
-def tarifleri_bul(girdi):
+def tarifleri_bul(girdi, kategori_filtresi):
     girdi = girdi.lower()
     bulunanlar = []
-    
-    # 1. Önce SABİT listede ara
-    for tarif in TUM_TARIFLER:
-        malzeme_metni = " ".join(tarif["malz"]).lower()
-        if girdi in malzeme_metni or girdi in tarif["ad"].lower():
+    tam_liste = TUM_TARIFLER + tarifleri_yukle()
+    for tarif in tam_liste:
+        if kategori_filtresi != "Tümü" and tarif.get("kat") != kategori_filtresi:
+            continue
+        malz_text = " ".join(tarif["malz"]).lower() if isinstance(tarif["malz"], list) else str(tarif["malz"]).lower()
+        if not girdi or (girdi in malz_text or girdi in tarif["ad"].lower()):
             bulunanlar.append(tarif)
-
-    # 2. Sonra KULLANICI (DOSYA) tariflerinde ara
-    kullanici_tarifleri = tarifleri_yukle()
-    for tarif in kullanici_tarifleri:
-        # Eski format kontrolü
-        malz_veri = tarif["malz"]
-        if isinstance(malz_veri, str):
-             malz_metni = malz_veri.lower()
-        else:
-             malz_metni = " ".join(malz_veri).lower()
-             
-        if girdi in malz_metni or girdi in tarif["ad"].lower():
-            bulunanlar.append(tarif)
-            
-    # 3. Eğer hiç sonuç yoksa, OTOMATİK ÜRET
-    if not bulunanlar:
+    if not bulunanlar and girdi and kategori_filtresi == "Tümü":
         bulunanlar.append(tarif_uret(girdi))
-        
     return bulunanlar
 
-# --- ARAYÜZ ---
+# --- 6. ARAYÜZ ---
 
-# --- LOGO BÖLÜMÜ (EN TEPEDE) ---
-# logo.png dosyasının app.py ile aynı klasörde olduğundan emin olun!
-col_logo_sol, col_logo_orta, col_logo_sag = st.columns([1, 2, 1])
-with col_logo_orta:
+with st.sidebar:
+    st.image("logo.png", use_container_width=True)
+    st.markdown("### 🎛️ Filtreler")
+    kategori = st.radio("Kategori Seç:", ["Tümü", "Kahvaltı", "Çorba", "Ana Yemek", "Tavuk", "Makarna", "Pilav", "Tatlı", "Kullanıcı"])
+    st.markdown("---")
+    st.info("💡 **Pro İpucu:** Dolap Şefi artık akıllı tarif üretebiliyor!")
+
+col1, col2, col3 = st.columns([1, 2, 1])
+with col2:
     try:
         st.image("logo.png", use_container_width=True)
     except:
-        st.warning("⚠️ 'logo.png' dosyası bulunamadı! Lütfen dosyayı proje klasörüne yükleyin.")
+        pass
 
-st.title("👨‍🍳 Dolap Şefi")
-st.markdown("<h4 style='text-align: center; color: #ddd; margin-top: -15px;'>Ne pişirsem derdine son!</h4>", unsafe_allow_html=True)
+st.title("Dolap Şefi")
+st.markdown("<p style='text-align: center; color: #aaa; margin-top: -10px; font-weight: 300;'>Akıllı Mutfak Asistanın</p>", unsafe_allow_html=True)
 
-tab1, tab2 = st.tabs(["🔥 Tarif Bulucu", "🌟 Vitrin (+Tarif Ekle)"])
+tab1, tab2 = st.tabs(["🔥 Tarif Bulucu", "👨‍🍳 Mutfak Vitrini"])
 
-# ================= TAB 1: ARAMA =================
+# --- TAB 1: ARAMA ---
 with tab1:
     if st.session_state.secilen_tarif is None:
-        malzemeler = st.text_input("Dolabında ne var?", placeholder="Örn: Patates, Kıyma, Yumurta...")
+        malzemeler = st.text_input("Dolabında ne var?", placeholder="Malzeme ara... (Örn: Yumurta, Patates)")
         
-        if st.button("🔍 Tarifleri Listele", type="primary"):
-            if not malzemeler:
-                st.warning("Malzeme yazmadın şefim!")
-            else:
-                with st.spinner("Şef arşivine bakıyor..."):
-                    time.sleep(0.4)
-                    st.session_state.sonuclar = tarifleri_bul(malzemeler)
-
-        if st.session_state.sonuclar:
-            sayi = len(st.session_state.sonuclar)
-            st.success(f"🎉 {sayi} Tarif Bulundu!")
+        sonuclar = tarifleri_bul(malzemeler, kategori)
+        
+        if malzemeler or kategori != "Tümü":
+            st.markdown(f"##### 🎉 {len(sonuclar)} Sonuç Bulundu")
             
-            for i, tarif in enumerate(st.session_state.sonuclar):
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    # Kart gösterimi
-                    try:
-                        malz_gosterim = tarif['malz']
-                        if isinstance(malz_gosterim, list):
-                            ozet = ", ".join(malz_gosterim[:3]) + "..."
-                        else:
-                            ozet = malz_gosterim[:50] + "..."
-                    except:
-                        ozet = "Malzemeler tarifte..."
-
+            for i, tarif in enumerate(sonuclar):
+                col_a, col_b = st.columns([3, 1])
+                with col_a:
+                    malz_goster = ", ".join(tarif['malz'][:4]) + "..." if isinstance(tarif['malz'], list) else str(tarif['malz'])[:40]
                     st.markdown(f"""
                     <div class="haber-kart">
-                        <div style="display:flex; justify-content:space-between;">
-                            <h3 style="margin:0; color:#ffcc00;">{tarif['ad']}</h3>
-                            <span style="background:rgba(255,255,255,0.2); padding:2px 6px; border-radius:4px; font-size:10px;">{tarif.get('kat', 'Genel')}</span>
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <h3 style="margin:0; color:#FFCC00; font-size: 1.2rem;">{tarif['ad']}</h3>
+                            <span style="font-size:10px; background:rgba(255,255,255,0.1); padding:4px 8px; border-radius:20px; border:1px solid rgba(255,255,255,0.2);">{tarif.get('kat','Genel')}</span>
                         </div>
-                        <p style="margin:5px 0 10px 0; color:#ddd;"><i>{tarif['desc']}</i></p>
-                        <span style="font-size:12px; color:#ccc;">Malzemeler: {ozet}</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with col2:
-                    st.write("") 
+                        <p style="color:#ccc; font-size: 0.9rem; margin-top: 5px;">{tarif['desc']}</p>
+                        <span style="font-size:12px; color:#888;">🛒 {malz_goster}</span>
+                    </div>""", unsafe_allow_html=True)
+                with col_b:
                     st.write("")
-                    if st.button("Tarife Git 👉", key=f"btn_{i}"):
+                    st.write("")
+                    if st.button("Tarifi Gör →", key=f"btn_{i}"):
                         st.session_state.secilen_tarif = tarif
                         st.rerun()
-
     else:
-        # DETAY EKRANI
-        yemek = st.session_state.secilen_tarif
+        # DETAY SAYFASI
+        t = st.session_state.secilen_tarif
         if st.button("⬅️ Listeye Dön"):
             st.session_state.secilen_tarif = None
             st.rerun()
             
         st.divider()
-        st.header(f"🍽️ {yemek['ad']}")
-        st.info(f"💡 {yemek['desc']}")
+        st.markdown(f"<h1 style='text-align:left; color:#FFCC00;'>{t['ad']}</h1>", unsafe_allow_html=True)
+        st.caption(f"{t.get('kat', 'Genel')} • 15-30 Dk • Kolay")
         
-        # --- MALZEME KUTUSU (FORMAT KONTROLLÜ) ---
-        malz_html = "<ul>"
-        raw_malz = yemek['malz']
+        col_d1, col_d2 = st.columns([1, 2])
         
-        if isinstance(raw_malz, list):
-            for m in raw_malz:
-                malz_html += f"<li>{m}</li>"
-        else:
-            # Eğer kullanıcı eski tip text girdiyse onu da düzgün göster
-            for satir in raw_malz.split('\n'):
-                malz_html += f"<li>{satir}</li>"
-        
-        malz_html += "</ul>"
-
-        st.markdown(f"""
-        <div class="malzeme-kutusu">
-            <h4>🛒 Gerekli Malzemeler:</h4>
-            {malz_html}
-        </div>
-        """, unsafe_allow_html=True)
-        # --------------------------------------------------
-        
-        st.markdown(f"""
-        <div style='background:rgba(255,255,255,0.05); padding:25px; border-radius:15px; font-size:16px; line-height:1.8;'>
-            {yemek['tar']}
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Trendyol Linki (Hata korumalı)
-        try:
-            if isinstance(raw_malz, list):
-                ana_malzeme = raw_malz[0].split(' ')[-1]
-            else:
-                ana_malzeme = raw_malz.split(' ')[0]
-        except:
-            ana_malzeme = "mutfak"
-
-        link = f"https://www.trendyol.com/sr?q={ana_malzeme}"
-        st.markdown(f"""<a href="{link}" target="_blank" class="btn-trendyol">🛒 Malzemeleri Al (Trendyol)</a>""", unsafe_allow_html=True)
-
-# ================= TAB 2: VİTRİN & TARİF EKLEME =================
-with tab2:
-    st.header("🌟 Haftanın Yıldız Şefleri")
-
-    # --- KULLANICI TARİFLERİ (DOSYADAN) ---
-    kayitli_tarifler = tarifleri_yukle()
-    if kayitli_tarifler:
-        for k_tarif in reversed(kayitli_tarifler): # En yeniyi en üstte göster
+        with col_d1:
+            st.markdown('<div class="malzeme-kutusu"><h4>🛒 Malzemeler</h4><ul>', unsafe_allow_html=True)
+            malz_list = t['malz'] if isinstance(t['malz'], list) else t['malz'].split('\n')
+            for m in malz_list:
+                st.markdown(f"<li>{m}</li>", unsafe_allow_html=True)
+            st.markdown('</ul></div>', unsafe_allow_html=True)
+            
+        with col_d2:
              st.markdown(f"""
-            <div class="haber-kart" style="border-left: 6px solid #28a745;">
-                <h3>🆕 {k_tarif['ad']}</h3>
-                <p><strong>Şef:</strong> {k_tarif['sef']}</p>
-                <p><i>"{k_tarif['desc']}"</i></p>
-                 <p style="font-size:12px; color:#ccc;">(Kullanıcı Tarifi)</p>
-            </div>""", unsafe_allow_html=True)
+            <div style='background:rgba(255,255,255,0.02); padding:25px; border-radius:15px; border:1px solid rgba(255,255,255,0.05);'>
+                <h4 style="color:#FFCC00; margin-top:0;">👨‍🍳 Hazırlanışı</h4>
+                <div style="line-height: 1.8; color: #ddd; white-space: pre-line;">{t['tar']}</div>
+            </div>
+            """, unsafe_allow_html=True)
+             
+             ana_malzeme = malz_list[0].split(" ")[-1] if malz_list else "Mutfak"
+             link = f"https://www.trendyol.com/sr?q={ana_malzeme}"
+             st.markdown(f'<a href="{link}" target="_blank" class="btn-trendyol">🛍️ Malzemeleri Sepete Ekle</a>', unsafe_allow_html=True)
 
-    
-    with st.container():
-        st.markdown("""
-        <div class="haber-kart">
-            <h3>🍝 Berkecan'ın Makarnası</h3>
-            <p>⭐️⭐️⭐️⭐️⭐️ (124 Beğeni)</p>
-        </div>""", unsafe_allow_html=True)
+# --- TAB 2: VİTRİN ---
+with tab2:
+    st.subheader("🌟 Topluluk Vitrini")
+    col_v1, col_v2 = st.columns(2)
+    with col_v1:
         st.video("https://www.w3schools.com/html/mov_bbb.mp4")
-    
-    with st.container():
-        st.markdown("""
-        <div class="haber-kart">
-            <h3>🥞 Ayşe Teyze'nin Krepi</h3>
-            <p>⭐️⭐️⭐️⭐️ (98 Beğeni)</p>
-        </div>""", unsafe_allow_html=True)
+        st.caption("🔥 Berkecan - 'Öğrenci Makarnası'")
+    with col_v2:
+        st.image("https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400")
+        st.caption("🍕 Melis - 'Gece Pizzası'")
 
     st.markdown("---")
-    # --- YENİ ÇALIŞAN TARİF EKLEME FORMU ---
-    st.subheader("Sen de Mutfağa Katıl! 👨‍🍳")
-    with st.form("tarif_ekle_form"):
-        sef_adi = st.text_input("Adın Soyadın (Şef Adı)")
-        tarif_adi = st.text_input("Tarifin Adı (Örn: Anne Köftesi)")
-        kisa_aciklama = st.text_input("Kısa Bir Slogan (Örn: Parmak yedirtir!)")
-        # Basitlik olsun diye malzemeleri alt alta yazdırıp biz listeye çevireceğiz
-        malzemeler_input = st.text_area("Malzemeler (Her satıra bir malzeme yaz)")
-        yapilis_input = st.text_area("Nasıl Yapılır?")
+    st.markdown("### 📤 Kendi Tarifini Ekle")
+    with st.form("ekle_form"):
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            k_ad = st.text_input("Şef Adı")
+            t_ad = st.text_input("Yemek Adı")
+        with col_f2:
+            t_desc = st.text_input("Slogan (Örn: Efsane Lezzet)")
+            
+        t_malz = st.text_area("Malzemeler (Her satıra bir tane yaz)")
+        t_tar = st.text_area("Tarif Adımları")
         
-        submitted = st.form_submit_button("🚀 Tarifi Kalıcı Olarak Kaydet")
-        
-        if submitted:
-            if not sef_adi or not tarif_adi or not malzemeler_input:
-                 st.warning("Lütfen şef adı, tarif adı ve malzemeleri gir.")
-            else:
-                # Malzemeleri listeye çevir (Her satır bir malzeme)
-                malzeme_listesi = [m.strip() for m in malzemeler_input.split('\n') if m.strip()]
-
-                # Yeni tarifi oluştur
-                yeni_tarif = {
-                    "sef": sef_adi,
-                    "ad": tarif_adi,
-                    "desc": kisa_aciklama,
-                    "malz": malzeme_listesi, 
-                    "tar": yapilis_input,
-                    "kat": "Kullanıcı"
+        if st.form_submit_button("Tarifi Yayınla 🚀"):
+            if k_ad and t_ad and t_malz:
+                yeni = {
+                    "ad": t_ad, "kat": "Kullanıcı", "sef": k_ad,
+                    "desc": t_desc, "tar": t_tar,
+                    "malz": [m.strip() for m in t_malz.split('\n') if m.strip()]
                 }
-                
-                # DOSYAYA KAYDET
-                tarifi_kaydet(yeni_tarif)
-                
-                st.success("Harika! Tarifin veritabanına işlendi.")
-                time.sleep(1)
-                st.rerun()
+                tarifi_kaydet(yeni)
+                st.balloons()
+                st.success("Tarifin Yayında!")
+
+# --- FOOTER ---
+st.markdown("""
+<div class="footer">
+    <p>Designed by Dolap Şefi Team | © 2026</p>
+</div>
+""", unsafe_allow_html=True)
