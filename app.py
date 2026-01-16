@@ -12,226 +12,280 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- 2. DOSYA YÖNETİMİ & VERİTABANI ---
+# --- 2. DOSYA YÖNETİMİ ---
 TARIF_DOSYASI = "kullanici_tarifleri.json"
 YORUM_DOSYASI = "yorumlar.json"
 KULLANICI_DOSYASI = "kullanicilar.json"
 
-# --- Kullanıcı İşlemleri ---
-def kullanicilari_yukle():
-    if os.path.exists(KULLANICI_DOSYASI):
-        with open(KULLANICI_DOSYASI, "r", encoding="utf-8") as f:
+# --- 3. VERİTABANI FONKSİYONLARI ---
+def veri_yukle(dosya_adi):
+    if os.path.exists(dosya_adi):
+        with open(dosya_adi, "r", encoding="utf-8") as f:
             try: return json.load(f)
-            except: return {}
-    return {}
+            except: return {} if "json" in dosya_adi else []
+    return {} if "yorum" in dosya_adi or "kullanici" in dosya_adi else []
 
-def kullanici_kaydet(kullanici_adi, sifre):
-    users = kullanicilari_yukle()
-    if kullanici_adi in users:
-        return False # Kullanıcı zaten var
-    users[kullanici_adi] = sifre
-    with open(KULLANICI_DOSYASI, "w", encoding="utf-8") as f:
-        json.dump(users, f, ensure_ascii=False, indent=4)
+def veri_kaydet(dosya_adi, veri):
+    with open(dosya_adi, "w", encoding="utf-8") as f:
+        json.dump(veri, f, ensure_ascii=False, indent=4)
+
+# --- Kullanıcı İşlemleri ---
+def kullanici_kaydet(k_adi, sifre):
+    users = veri_yukle(KULLANICI_DOSYASI)
+    if k_adi in users: return False
+    users[k_adi] = sifre
+    veri_kaydet(KULLANICI_DOSYASI, users)
     return True
 
-def giris_yap(kullanici_adi, sifre):
-    # Önce Admin Kontrolü
-    if kullanici_adi == "admin" and sifre == "2026":
-        return "admin"
-    # Sonra Normal Kullanıcı
-    users = kullanicilari_yukle()
-    if users.get(kullanici_adi) == sifre:
-        return "user"
-    return False
+def giris_kontrol(k_adi, sifre):
+    if k_adi == "admin" and sifre == "2026": return "admin"
+    users = veri_yukle(KULLANICI_DOSYASI)
+    return "user" if users.get(k_adi) == sifre else False
 
-# --- Tarif İşlemleri ---
-def tarifleri_yukle():
-    if os.path.exists(TARIF_DOSYASI):
-        with open(TARIF_DOSYASI, "r", encoding="utf-8") as f:
-            try:
-                data = json.load(f)
-                for d in data: 
-                    if 'likes' not in d: d['likes'] = 0
-                return data
-            except: return []
-    return []
+# --- Tarif & Yorum İşlemleri ---
+def tarif_ekle(yeni):
+    mevcut = veri_yukle(TARIF_DOSYASI)
+    if isinstance(mevcut, dict): mevcut = [] # Hata önleyici
+    mevcut.append(yeni)
+    veri_kaydet(TARIF_DOSYASI, mevcut)
 
-def tarifi_kaydet(yeni_tarif):
-    mevcut = tarifleri_yukle()
-    mevcut.append(yeni_tarif)
-    with open(TARIF_DOSYASI, "w", encoding="utf-8") as f:
-        json.dump(mevcut, f, ensure_ascii=False, indent=4)
-
-def tarifi_sil(index):
-    """Sadece Admin kullanabilir"""
-    mevcut = tarifleri_yukle()
-    if 0 <= index < len(mevcut):
-        del mevcut[index]
-        with open(TARIF_DOSYASI, "w", encoding="utf-8") as f:
-            json.dump(mevcut, f, ensure_ascii=False, indent=4)
+def tarif_sil(idx):
+    mevcut = veri_yukle(TARIF_DOSYASI)
+    if 0 <= idx < len(mevcut):
+        del mevcut[idx]
+        veri_kaydet(TARIF_DOSYASI, mevcut)
         return True
     return False
 
-def begeni_arttir(index):
-    tarifler = tarifleri_yukle()
-    if 0 <= index < len(tarifler):
-        tarifler[index]['likes'] = tarifler[index].get('likes', 0) + 1
-        with open(TARIF_DOSYASI, "w", encoding="utf-8") as f:
-            json.dump(tarifler, f, ensure_ascii=False, indent=4)
+def yorum_ekle(yemek, isim, mesaj):
+    data = veri_yukle(YORUM_DOSYASI)
+    if yemek not in data: data[yemek] = []
+    data[yemek].insert(0, {"isim": isim, "msg": mesaj, "tarih": datetime.now().strftime("%d-%m %H:%M")})
+    veri_kaydet(YORUM_DOSYASI, data)
 
-# --- Yorum İşlemleri ---
-def yorumlari_yukle():
-    if os.path.exists(YORUM_DOSYASI):
-        with open(YORUM_DOSYASI, "r", encoding="utf-8") as f:
-            try: return json.load(f)
-            except: return {}
-    return {}
-
-def yorum_ekle(yemek_adi, isim, yorum):
-    data = yorumlari_yukle()
-    if yemek_adi not in data: data[yemek_adi] = []
-    data[yemek_adi].insert(0, {"isim": isim, "yorum": yorum, "tarih": datetime.now().strftime("%d-%m %H:%M")})
-    with open(YORUM_DOSYASI, "w", encoding="utf-8") as f:
-        json.dump(data, f, ensure_ascii=False, indent=4)
-
-# --- 3. SESSION STATE (OTURUM) ---
-if "login_status" not in st.session_state: st.session_state.login_status = False # False, 'user', 'admin'
-if "username" not in st.session_state: st.session_state.username = None
-if "sonuclar" not in st.session_state: st.session_state.sonuclar = [] 
-if "secilen_tarif" not in st.session_state: st.session_state.secilen_tarif = None 
-
-# --- 4. CSS TASARIM ---
+# --- 4. CSS (PREMIUM TASARIM - İŞTAH AÇICI MOD) ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-.stApp { background-color: #0e1117; background-image: radial-gradient(circle at 50% 0%, #4a0404 0%, #0e1117 60%); font-family: 'Inter', sans-serif; color: #fff; }
-h1 { font-weight: 800; background: -webkit-linear-gradient(45deg, #FFCC00, #FF6B6B); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
-.haber-kart { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); padding: 20px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.05); margin-bottom: 20px; transition: all 0.3s; }
-.haber-kart:hover { transform: translateY(-3px); border-color: rgba(255, 204, 0, 0.3); }
-.btn-migros { display: block; width: 100%; background: linear-gradient(135deg, #FF7900, #F7941D); color: white !important; text-align: center; padding: 12px; border-radius: 10px; font-weight: 700; text-decoration: none; margin-top: 15px; }
-.yorum-kutu { background: rgba(255,255,255,0.05); padding: 10px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid #FFCC00; font-size: 0.9rem;}
-.admin-badge { background-color: #e74c3c; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+.stApp { background-color: #0e1117; background-image: radial-gradient(circle at 50% 0%, #5e0a0a 0%, #0e1117 80%); font-family: 'Inter', sans-serif; color: #fff; }
+
+/* Başlık */
+h1 { 
+    font-weight: 900; 
+    font-size: 3rem;
+    background: -webkit-linear-gradient(45deg, #FFCC00, #FF4500); 
+    -webkit-background-clip: text; 
+    -webkit-text-fill-color: transparent; 
+    text-align: center; 
+    text-shadow: 0px 4px 15px rgba(255, 69, 0, 0.4);
+}
+
+/* Kart Tasarımı (Daha Büyük ve Şık) */
+.haber-kart { 
+    background: rgba(255, 255, 255, 0.04); 
+    backdrop-filter: blur(12px); 
+    padding: 25px; 
+    border-radius: 20px; 
+    border: 1px solid rgba(255, 255, 255, 0.08); 
+    margin-bottom: 25px; 
+    transition: all 0.4s ease;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+}
+.haber-kart:hover { 
+    transform: translateY(-7px) scale(1.01); 
+    border-color: rgba(255, 204, 0, 0.5); 
+    box-shadow: 0 15px 35px -5px rgba(255, 69, 0, 0.3);
+}
+
+/* Malzeme Listesi */
+.malzeme-kutusu { 
+    background: rgba(255, 165, 0, 0.08); 
+    border-left: 5px solid #FF7900; 
+    padding: 20px; 
+    border-radius: 10px; 
+    margin: 20px 0;
+    font-size: 1.05rem;
+}
+
+/* Migros Butonu */
+.btn-migros { 
+    display: block; width: 100%; 
+    background: linear-gradient(135deg, #FF7900, #F7941D); 
+    color: white !important; text-align: center; padding: 18px; 
+    border-radius: 15px; font-weight: 800; text-decoration: none; 
+    box-shadow: 0 5px 20px rgba(255, 121, 0, 0.5); transition: 0.3s; font-size: 18px; 
+}
+.btn-migros:hover { transform: scale(1.02); filter: brightness(1.1); }
+
+/* Yorumlar */
+.yorum-kutu { 
+    background: rgba(255,255,255,0.05); 
+    padding: 15px; border-radius: 12px; margin-bottom: 10px; 
+    border-left: 3px solid #FFCC00; 
+}
+
+/* Genel */
+[data-testid="stImage"] { display: block; margin: 0 auto; border-radius: 15px; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 5. DEV TARİF HAVUZU (YENİLER EKLENDİ) ---
-# Kodun çok uzamaması için kısa tutarak maksimum çeşitliliği ekliyorum.
+# --- 5. DETAYLI & İŞTAH AÇAN TARİFLER (Özenle Yazılmış) ---
 SABIT_TARIFLER = [
-    # --- KAHVALTILIKLAR (20 Adet Hedefli) ---
-    {"ad": "Efsane Menemen", "kat": "Kahvaltı", "malz": ["Yumurta", "Domates", "Biber", "Yağ"], "desc": "Kahvaltının kralı.", "tar": "Biberleri kavur, domatesi ekle, yumurtayı kır."},
-    {"ad": "Kuymak", "kat": "Kahvaltı", "malz": ["Mısır Unu", "Tereyağı", "Çeçil Peyniri"], "desc": "Karadeniz efsanesi.", "tar": "Yağda unu kavur, suyu ekle, peyniri erit."},
-    {"ad": "Çılbır", "kat": "Kahvaltı", "malz": ["Yumurta", "Yoğurt", "Sarımsak", "Tereyağı", "Pulbiber"], "desc": "Saray kahvaltısı.", "tar": "Kaynayan sirkeli suya yumurtayı kır poşe et. Sarımsaklı yoğurt ve biberli yağ ile servis yap."},
-    {"ad": "Pankek", "kat": "Kahvaltı", "malz": ["Un", "Süt", "Yumurta", "Kabartma Tozu"], "desc": "Puf puf.", "tar": "Çırp, tavada arkalı önlü pişir."},
-    {"ad": "Yumurtalı Ekmek", "kat": "Kahvaltı", "malz": ["Bayat Ekmek", "Yumurta", "Süt", "Sıvı Yağ"], "desc": "Ekmekleri değerlendir.", "tar": "Ekmekleri yumurtalı süte batır, kızgın yağda kızart."},
-    {"ad": "Sucuklu Yumurta", "kat": "Kahvaltı", "malz": ["Sucuk", "Yumurta", "Tereyağı"], "desc": "Pazar klasiği.", "tar": "Sucukları kurutmadan pişir, yumurtayı ekle."},
-    {"ad": "Pişi", "kat": "Kahvaltı", "malz": ["Un", "Su", "Maya", "Tuz"], "desc": "Hamur kızartması.", "tar": "Mayalı hamur yap, kızgın yağda pişir."},
-    {"ad": "Patatesli Omlet", "kat": "Kahvaltı", "malz": ["Patates", "Yumurta", "Kaşar"], "desc": "Doyurucu.", "tar": "Küp patatesleri kızart, üzerine yumurtayı dök."},
-    {"ad": "Simit Pizza", "kat": "Kahvaltı", "malz": ["Simit", "Kaşar", "Sucuk", "Domates"], "desc": "Pratik lezzet.", "tar": "Simidi ortadan kes, malzemeleri koy, fırınla."},
-    {"ad": "Avokado Toast", "kat": "Kahvaltı", "malz": ["Avokado", "Ekmek", "Limon", "Yumurta"], "desc": "Modern kahvaltı.", "tar": "Avokadoyu ez sür, üzerine haşlanmış yumurta koy."},
+    # KAHVALTI
+    {
+        "ad": "Trabzon Usulü Kuymak", "kat": "Kahvaltı", 
+        "malz": ["2 Dolu Yemek Kaşığı Tereyağı", "2 Yemek Kaşığı Mısır Unu", "1 Kase Trabzon/Çeçil Peyniri", "1 Su Bardağı Ilık Su"], 
+        "desc": "Karadeniz'in uzadıkça uzayan, tereyağı kokan efsanesi.", 
+        "tar": "1. Bakır tavada tereyağını eritin ama yakmayın, sadece köpürsün.\n2. Mısır ununu ekleyip rengi hafif dönene ve o mis gibi kavrulmuş koku çıkana kadar kısık ateşte karıştırın.\n3. Suyu yavaş yavaş eklerken bir yandan hızlıca karıştırın ki topaklanmasın. (Boza kıvamı alacak).\n4. Karışım göz göz olup yağını hafif salmaya başlayınca peyniri ekleyin.\n5. **Püf Noktası:** Peynir eriyip, tereyağı sapsarı üste çıkana kadar hiç karıştırmadan pişirin. Sıcak servis yapın, ekmeği banın!"
+    },
+    {
+        "ad": "Efsane Menemen", "kat": "Kahvaltı", 
+        "malz": ["3 Adet Yumurta", "3 Adet Sivri Biber", "2 Adet Orta Boy Domates", "Sıvı Yağ & Tereyağı", "Tuz, Karabiber, Pul Biber"], 
+        "desc": "Pazar sabahlarının vazgeçilmezi. Ekmeği hazırlayın.", 
+        "tar": "1. Biberleri ince halkalar halinde doğrayın. Tavaya yağı alıp biberleri ölene kadar kavurun.\n2. Kabukları soyulmuş domatesleri küp küp doğrayın ve tavaya ekleyin. Kapağını kapatıp domatesler sos kıvamına gelene kadar pişirin.\n3. İster ayrı bir kapta çırpın, ister direkt kırın; yumurtaları ekleyin.\n4. **Önemli:** Yumurtayı çok karıştırmayın, bırakın beyazı ve sarısı hafifçe birbirine geçsin. Baharatları ekleyip, yumurtalar istediğiniz kıvama gelince ocaktan alın."
+    },
+    {
+        "ad": "Puf Puf Pankek", "kat": "Kahvaltı",
+        "malz": ["1.5 Su Bardağı Un", "1 Su Bardağı Süt", "1 Yumurta", "1 Paket Kabartma Tozu", "1 Paket Vanilya", "2 YK Şeker"],
+        "desc": "Bulut gibi yumuşacık, bal ve çikolatanın en iyi arkadaşı.",
+        "tar": "1. Derin bir kapta yumurta ve şekeri köpürene kadar iyice çırpın.\n2. Sütü, sıvı yağı (1 kaşık) ekleyin.\n3. Un, kabartma tozu ve vanilyayı eleyerek karışıma dökün. (Topak kalmayana kadar çırpın).\n4. Yapışmaz tavayı çok az yağlayın ve ısıtın. Hamurdan bir kepçe dökün.\n5. Üzeri göz göz baloncuk olunca diğer tarafını çevirin. İki tarafı da altın sarısı olunca alın."
+    },
     
-    # --- ATIŞTIRMALIKLAR (20 Adet Hedefli) ---
-    {"ad": "Mücver", "kat": "Atıştırmalık", "malz": ["Kabak", "Yumurta", "Un", "Dereotu"], "desc": "Çıtır sebze.", "tar": "Rendele, karıştır, kızart."},
-    {"ad": "Soğan Halkası", "kat": "Atıştırmalık", "malz": ["Kuru Soğan", "Un", "Soda", "Galeta Unu"], "desc": "Ev yapımı çıtır.", "tar": "Halkaları sosa batır, galetaya bula, kızart."},
-    {"ad": "Paçanga Böreği", "kat": "Atıştırmalık", "malz": ["Yufka", "Pastırma", "Kaşar", "Biber"], "desc": "Sıcak sıcak.", "tar": "Malzemeyi sar, kızart."},
-    {"ad": "Patates Kroket", "kat": "Atıştırmalık", "malz": ["Patates", "Yumurta", "Un", "Galeta Unu"], "desc": "Püre topu.", "tar": "Püreyi şekillendir, panela, kızart."},
-    {"ad": "Bruschetta", "kat": "Atıştırmalık", "malz": ["Ekmek", "Domates", "Fesleğen", "Sarımsak"], "desc": "İtalyan başlangıç.", "tar": "Ekmekleri kızart, domatesli karışımı üstüne koy."},
-    {"ad": "Çıtır Tavuk", "kat": "Atıştırmalık", "malz": ["Tavuk Göğsü", "Mısır Gevreği", "Yumurta"], "desc": "Kova menü gibi.", "tar": "Tavuğu gevreğe bula fırınla."},
-    {"ad": "Humus", "kat": "Atıştırmalık", "malz": ["Nohut", "Tahin", "Limon", "Kimyon"], "desc": "En iyi meze.", "tar": "Hepsini robottan geçir."},
-    {"ad": "Sigara Böreği", "kat": "Atıştırmalık", "malz": ["Yufka", "Lor Peyniri"], "desc": "Klasik.", "tar": "Sar ve kızart."},
-    
-    # --- DÜNYA MUTFAĞI (20 Adet Hedefli) ---
-    {"ad": "Ev Yapımı Pizza", "kat": "Dünya Mutfağı", "malz": ["Un", "Maya", "Mozzarella", "Sucuk/Mantar"], "desc": "İtalyan işi.", "tar": "Hamuru aç, sosu sür, malzemeyi diz fırınla."},
-    {"ad": "Hamburger", "kat": "Dünya Mutfağı", "malz": ["Kıyma", "Hamburger Ekmeği", "Cheddar", "Turşu"], "desc": "Fast food evde.", "tar": "Köfteyi pişir, ekmek arası yap."},
-    {"ad": "Taco", "kat": "Dünya Mutfağı", "malz": ["Lavaş/Tortilla", "Kıyma", "Mısır", "Meksika Fasulyesi"], "desc": "Meksika ateşi.", "tar": "Kıymalı harcı hazırla, lavaşa koy."},
-    {"ad": "Sebzeli Noodle", "kat": "Dünya Mutfağı", "malz": ["Noodle/Spagetti", "Soya Sosu", "Havuç", "Lahana"], "desc": "Uzak doğu.", "tar": "Sebzeleri yüksek ateşte çevir, haşlanmış makarnayla karıştır."},
-    {"ad": "Falafel", "kat": "Dünya Mutfağı", "malz": ["Nohut", "Maydanoz", "Soğan", "Sarımsak"], "desc": "Orta doğu köftesi.", "tar": "Malzemeleri robottan çek, top yap kızart."},
-    {"ad": "Mac and Cheese", "kat": "Dünya Mutfağı", "malz": ["Makarna", "Cheddar", "Süt", "Un"], "desc": "Peynir şelalesi.", "tar": "Beşamel sos yap, peyniri erit, makarnayla karıştır."},
-    {"ad": "Quesadilla", "kat": "Dünya Mutfağı", "malz": ["Tortilla", "Tavuk", "Kaşar", "Biber"], "desc": "Peynirli Meksika gözlemesi.", "tar": "Lavaşa malzemeyi koy, katla, tavada pişir."},
-    {"ad": "Sushi (Ev Usulü)", "kat": "Dünya Mutfağı", "malz": ["Pirinç", "Nori Yosunu", "Salatalık", "Somon/Ton"], "desc": "Japon sanatı.", "tar": "Pirinci lapa yap, yosuna yay, sar."},
+    # ANA YEMEKLER
+    {
+        "ad": "Lokanta Usulü Tavuk Sote", "kat": "Tavuk",
+        "malz": ["500gr Tavuk Göğsü (Küp)", "2 Adet Yeşil Biber", "1 Adet Kapya Biber", "2 Adet Domates", "1 Soğan", "Sarımsak", "Kekik, Kimyon"],
+        "desc": "Suyuna ekmek banmalık, 20 dakikada hazır ziyafet.",
+        "tar": "1. Geniş bir tavayı (veya wok) iyice ısıtın. Tavukları atıp sularını salıp çekene kadar yüksek ateşte mühürleyin.\n2. Yemeklik doğranmış soğanları ekleyip şeffaflaşana kadar kavurun.\n3. Biberleri ekleyip 2-3 dakika daha çevirin.\n4. Kabuğu soyulmuş küp domatesleri, ezilmiş sarımsağı ve baharatları ekleyin.\n5. Domatesler suyunu salıp sos kıvamına gelene kadar, kapağı kapalı olarak kısık ateşte pişirin. En son kekik serpip servis edin."
+    },
+    {
+        "ad": "Anne Köftesi & Patates", "kat": "Ana Yemek",
+        "malz": ["500gr Kıyma (Orta Yağlı)", "1 Adet Kuru Soğan (Rende)", "1 Yumurta", "3-4 Dilim Bayat Ekmek İçi", "Maydanoz", "Kimyon, Tuz, Karabiber"],
+        "desc": "Çocukluğun o unutulmaz tadı. Yanına kızarmış patates şart.",
+        "tar": "1. Soğanı rendeleyin ve suyunu sıkın (Acısını atması için).\n2. Yoğurma kabına kıymayı, soğan posasını, yumurtayı, ıslatılıp sıkılmış ekmek içini, ince kıyılmış maydanozu ve baharatları alın.\n3. **Püf Noktası:** En az 10-15 dakika macun kıvamına gelene kadar yoğurun. Vaktiniz varsa buzdolabında 1 saat dinlendirin.\n4. Elinizle şekil verip, kızgın yağda arkalı önlü kızartın.\n5. Yanına elma dilim patates kızartarak servis yapın."
+    },
+    {
+        "ad": "Karnıyarık", "kat": "Ana Yemek",
+        "malz": ["6 Adet Kemer Patlıcan", "250gr Kıyma", "2 Yeşil Biber", "1 Soğan", "1 Domates", "Salça", "Maydanoz"],
+        "desc": "Türk mutfağının şahı. Pilavsız gitmez.",
+        "tar": "1. Patlıcanları alaca soyup tuzlu suda 20dk bekletin (Acısı çıksın). Sonra kurulayıp bütün halde kızgın yağda çevirerek kızartın.\n2. **İç Harcı:** Soğanı kavurun, kıymayı ekleyip rengi dönene kadar pişirin. Biberi, domates rendesini ve salçayı ekleyin. En son maydanozu atıp ocaktan alın.\n3. Kızarmış patlıcanları tepsiye dizin, ortalarını kaşıkla nazikçe açın (Sandam gibi).\n4. İç harcı patlıcanlara doldurun. Üzerine birer dilim domates ve biber koyun.\n5. Bir kasede salçalı sıcak su hazırlayıp tepsinin tabanına dökün. 180 derece fırında 20-25 dakika özleşene kadar pişirin."
+    },
 
-    # --- SEBZELİ (20 Adet Hedefli) ---
-    {"ad": "İmam Bayıldı", "kat": "Sebzeli", "malz": ["Patlıcan", "Soğan", "Sarımsak", "Domates"], "desc": "Zeytinyağlı efsane.", "tar": "Patlıcanı kızart, soğanlı harcı içine doldur, pişir."},
-    {"ad": "Şakşuka", "kat": "Sebzeli", "malz": ["Patlıcan", "Biber", "Kabak", "Domates Sos"], "desc": "Yaz mezesi.", "tar": "Sebzeleri küp kızart, domates sos dök."},
-    {"ad": "Zeytinyağlı Enginar", "kat": "Sebzeli", "malz": ["Enginar", "Bezelye", "Havuç", "Portakal Suyu"], "desc": "Karaciğer dostu.", "tar": "Garnitürü enginarın üstüne koy, portakal suyuyla pişir."},
-    {"ad": "Karnabahar Kızartması", "kat": "Sebzeli", "malz": ["Karnabahar", "Yumurta", "Un", "Yoğurt"], "desc": "Sarımsaklı yoğurtla.", "tar": "Haşla, panele, kızart."},
-    {"ad": "Kabak Sıyırma", "kat": "Sebzeli", "malz": ["Girit Kabağı", "Zeytinyağı", "Limon", "Pirinç"], "desc": "Hafif Ege yemeği.", "tar": "Kabakları şerit doğra, az pirinçle kavur."},
-    {"ad": "Fırın Sebze", "kat": "Sebzeli", "malz": ["Patates", "Kabak", "Havuç", "Biber", "Kekik"], "desc": "Diyet dostu.", "tar": "Hepsini doğra, yağla baharatla, fırına at."},
-    {"ad": "Mercimek Köftesi", "kat": "Sebzeli", "malz": ["Mercimek", "Bulgur", "Salça", "Yeşillik"], "desc": "Etsiz köfte.", "tar": "Mercimeği haşla bulguru at şişsin, yoğur."},
+    # MAKARNA & DÜNYA MUTFAĞI
+    {
+        "ad": "Kremalı Mantarlı Makarna", "kat": "Makarna",
+        "malz": ["1 Paket Penne/Burgu Makarna", "400gr Mantar", "1 Kutu Sıvı Krema", "2 Diş Sarımsak", "Taze Fesleğen veya Maydanoz", "Tereyağı"],
+        "desc": "Lüks restoran lezzetini evde yapın.",
+        "tar": "1. Makarnayı bol tuzlu suda haşlayın (Çok yumuşamasın, 'al dente' kalsın).\n2. Bu sırada mantarları ince doğrayın. Geniş tavada tereyağını eritin ve mantarları **yüksek ateşte** suyunu salıp hemen çekene kadar soteleyin.\n3. Ezilmiş sarımsağı ekleyip kokusu çıkana kadar çevirin.\n4. Kremayı ekleyin, kaynamaya başlayınca altını kısın. Tuz ve karabiber atın.\n5. Haşlanan makarnaları süzüp (haşlama suyundan yarım çay bardağı ayırın) sosun içine atın.\n6. Sosla makarnayı harmanlayın, gerekirse ayırdığınız sudan ekleyin. Üzerine yeşillik serpip sıcak servis yapın."
+    },
+    {
+        "ad": "Ev Yapımı Pizza", "kat": "Dünya Mutfağı",
+        "malz": ["3 Su Bardağı Un", "1 Su Bardağı Ilık Su", "1 Paket Maya", "Mozzarella/Kaşar", "Sucuk, Mantar, Zeytin", "Domates Sosu"],
+        "desc": "Dışarıdan söylemeye son. İncecik hamur, bol malzeme.",
+        "tar": "1. Un, maya, su, tuz ve 2 kaşık zeytinyağını yoğurun. Ele yapışmayan yumuşak bir hamur elde edin. 40dk mayalandırın.\n2. Hamuru incecik açın ve yağlı kağıt serili tepsiye koyun.\n3. Üzerine domates sosunu (salça+su+kekik) sürün.\n4. Önce peynirin yarısını, sonra dilediğiniz malzemeleri (sucuk, mantar vs.) dizin.\n5. Önceden ısıtılmış **en yüksek derece (220-250)** fırının en alt rafında pişirin. Çıkmaya yakın kalan peyniri serpin."
+    },
+
+    # SEBZELİ & SALATA
+    {
+        "ad": "Zeytinyağlı Taze Fasulye", "kat": "Sebzeli",
+        "malz": ["500gr Taze Fasulye", "1 Büyük Soğan", "2 Domates", "Yarım Çay Bardağı Zeytinyağı", "1 Tatlı Kaşığı Şeker", "Sıcak Su"],
+        "desc": "Soğuk yendiğinde tadına doyum olmaz.",
+        "tar": "1. Fasulyeleri ayıklayıp isteğe göre kırın veya boyuna kesin.\n2. Tencereye zeytinyağını ve yemeklik doğranmış soğanları alıp hafifçe kavurun.\n3. Fasulyeleri ekleyip renkleri canlı yeşile dönene kadar (sarartana kadar) kavurun.\n4. Rendelenmiş domatesi, tuzu ve **mutlaka şekeri** ekleyin.\n5. Üzerini geçmeyecek kadar az sıcak su ekleyin. Kapağı kapalı, kısık ateşte fasulyeler yumuşayana kadar pişirin. Tenceresinde soğutun."
+    },
+    {
+        "ad": "Mücver", "kat": "Atıştırmalık",
+        "malz": ["3 Adet Kabak", "2 Yumurta", "3-4 Dal Taze Soğan", "Yarım Demet Dereotu", "Un", "Beyaz Peynir"],
+        "desc": "Sebze sevmeyene bile kabak yediren lezzet.",
+        "tar": "1. Kabakları rendeleyin ve **suyunu avucunuzla sımsıkı sıkın.** (Bu çok önemli, yoksa içi hamur kalır).\n2. Bir kaba kabakları, yumurtaları, ince kıyılmış yeşillikleri, ezilmiş peyniri ve baharatları alın.\n3. Kıvam alana kadar (kek hamurundan biraz koyu) un ekleyin.\n4. Tavada az yağı kızdırın. Kaşıkla harçtan alıp tavaya dökün ve üzerini düzeltin.\n5. Arkalı önlü altın sarısı olana kadar kızartın. Sarımsaklı yoğurtla servis yapın."
+    },
     
-    # --- KLASİKLER (Mevcutlar) ---
-    {"ad": "Kuru Fasulye", "kat": "Ana Yemek", "malz": ["Fasulye", "Et", "Salça"], "desc": "Milli yemek.", "tar": "Islat, haşla, pişir."},
-    {"ad": "Karnıyarık", "kat": "Ana Yemek", "malz": ["Patlıcan", "Kıyma"], "desc": "Patlıcan kebabı.", "tar": "Kızart doldur fırınla."},
-    {"ad": "Sütlaç", "kat": "Tatlı", "malz": ["Süt", "Pirinç", "Şeker"], "desc": "Sütlü tatlı.", "tar": "Kaynat fırınla."},
+    # TATLILAR
+    {
+        "ad": "Fırın Sütlaç", "kat": "Tatlı",
+        "malz": ["1 Litre Süt", "1 Çay Bardağı Pirinç", "1 Su Bardağı Şeker", "2 Dolu Yemek Kaşığı Nişasta", "1 Paket Vanilya"],
+        "desc": "Üzeri nar gibi kızarmış, kıvamı yerinde.",
+        "tar": "1. Pirinci 2 su bardağı suda yumuşayana kadar haşlayın (suyunu çeksin).\n2. Sütü ve şekeri ekleyip kaynatın.\n3. Nişastayı yarım çay bardağı sütle açıp tencereye yavaşça dökün. Kıvam alana kadar karıştırın. Vanilyayı ekleyip ocaktan alın.\n4. Sütlacı güveç kaplarına paylaştırın.\n5. Fırın tepsisine güveçlerin yarısına gelecek kadar soğuk su koyun.\n6. Önceden ısıtılmış 200 derece fırının **sadece üst ızgarasını** açın ve üzeri kızarana kadar pişirin."
+    },
+    {
+        "ad": "Islak Kek (Brownie)", "kat": "Tatlı",
+        "malz": ["3 Yumurta", "1.5 Su Bardağı Şeker", "1.5 Su Bardağı Süt", "1 Su Bardağı Sıvı Yağ", "3 YK Kakao", "2 Su Bardağı Un"],
+        "desc": "Bol soslu, ağızda eriyen efsane.",
+        "tar": "1. Yumurta ve şekeri köpürene kadar çırpın. Süt, yağ ve kakaoyu ekleyip çırpın.\n2. **Önemli:** Bu karışımdan 1 su bardağı ayırın (Sosu için).\n3. Kalan karışıma un ve kabartma tozu ekleyip yağlanmış tepsiye dökün. 180 derecede pişirin.\n4. Ayırdığınız sosa yarım bardak daha süt ekleyip bir taşım kaynatın.\n5. Kek fırından çıkınca dilimleyin ve sıcak keke sosu dökün. Soğuyunca hindistan cevizi ile süsleyin."
+    }
 ]
 
-# --- AKILLI ARAMA ---
+# --- 6. AKILLI ARAMA ---
 def tarifleri_bul(girdi, kategori):
     girdi = girdi.lower()
-    kelimeler = [x.strip() for x in girdi.replace(",", " ").split() if x.strip()]
+    # "domates, biber" -> ['domates', 'biber']
+    arananlar = [x.strip() for x in girdi.replace(",", " ").split() if x.strip()]
+    
+    # Veritabanlarını birleştir
+    tum_liste = SABIT_TARIFLER + veri_yukle(TARIF_DOSYASI)
+    
+    # Eğer arama boşsa ve kategori tümü ise -> Vitrin modunda karışık göster
+    if not arananlar and kategori == "Tümü":
+        return tum_liste
+
     bulunanlar = []
-    
-    # Sabit + Kullanıcı Tariflerini Birleştir
-    tum_liste = SABIT_TARIFLER + tarifleri_yukle()
-    
     for t in tum_liste:
         # Kategori Filtresi
         if kategori != "Tümü" and t.get("kat") != kategori:
             continue
             
-        text = (t["ad"] + " " + " ".join(t["malz"])).lower()
+        metin = (t["ad"] + " " + " ".join(t["malz"])).lower()
         
-        if not kelimeler: # Arama yoksa hepsini göster
+        # Eğer kelime yazılmadıysa (sadece kategori seçildiyse) ekle
+        if not arananlar:
             bulunanlar.append(t)
-        else: # Varsa ara (OR mantığı)
-            for k in kelimeler:
-                if k in text:
+        else:
+            # OR Mantığı: Kelimelerden HERHANGİ BİRİ varsa ekle
+            for kelime in arananlar:
+                if kelime in metin:
                     bulunanlar.append(t)
                     break
     return bulunanlar
 
-# --- ARAYÜZ ---
+# --- 7. ARAYÜZ ---
+if "login" not in st.session_state: st.session_state.login = False
+if "user" not in st.session_state: st.session_state.user = None
+if "secilen" not in st.session_state: st.session_state.secilen = None
 
-# YAN MENÜ (LOGIN PANELİ)
+# Yan Menü
 with st.sidebar:
     try: st.image("logo.png", use_container_width=True)
     except: pass
     
-    st.markdown("### 👤 Üyelik Paneli")
-    
-    if st.session_state.login_status:
-        st.success(f"Hoşgeldin, {st.session_state.username}")
-        if st.session_state.username == "admin":
-            st.warning("🔧 YÖNETİCİ MODU")
+    if st.session_state.login:
+        st.success(f"Hoşgeldin, {st.session_state.user}")
         if st.button("Çıkış Yap"):
-            st.session_state.login_status = False
-            st.session_state.username = None
+            st.session_state.login = False
+            st.session_state.user = None
             st.rerun()
     else:
-        tab_giris, tab_kayit = st.tabs(["Giriş", "Kayıt"])
-        with tab_giris:
-            g_ad = st.text_input("Kullanıcı Adı", key="g_ad")
-            g_sifre = st.text_input("Şifre", type="password", key="g_sifre")
-            if st.button("Giriş Yap"):
-                sonuc = giris_yap(g_ad, g_sifre)
-                if sonuc:
-                    st.session_state.login_status = True
-                    st.session_state.username = "admin" if sonuc == "admin" else g_ad
+        st.info("Tarif eklemek/yorum yapmak için giriş yap.")
+        tab1, tab2 = st.tabs(["Giriş", "Kayıt"])
+        with tab1:
+            k = st.text_input("Kullanıcı Adı")
+            s = st.text_input("Şifre", type="password")
+            if st.button("Giriş"):
+                res = giris_kontrol(k, s)
+                if res:
+                    st.session_state.login = True
+                    st.session_state.user = k if res == "user" else "admin"
                     st.rerun()
-                else:
-                    st.error("Hatalı bilgi.")
-        with tab_kayit:
-            k_ad = st.text_input("Yeni Kullanıcı Adı", key="k_ad")
-            k_sifre = st.text_input("Yeni Şifre", type="password", key="k_sifre")
+                else: st.error("Hatalı!")
+        with tab2:
+            yk = st.text_input("Yeni Ad")
+            ys = st.text_input("Yeni Şifre", type="password")
             if st.button("Kayıt Ol"):
-                if kullanici_kaydet(k_ad, k_sifre):
-                    st.success("Kayıt başarılı! Giriş yapabilirsin.")
-                else:
-                    st.error("Bu isim alınmış.")
+                if kullanici_kaydet(yk, ys): st.success("Kayıt oldun! Giriş yapabilirsin.")
+                else: st.error("İsim alınmış.")
 
     st.markdown("---")
-    kategori = st.radio("Menü:", ["Tümü", "Kahvaltı", "Atıştırmalık", "Ana Yemek", "Sebzeli", "Dünya Mutfağı", "Tatlı", "Kullanıcı"])
+    kat = st.radio("Kategori:", ["Tümü", "Kahvaltı", "Ana Yemek", "Tavuk", "Makarna", "Sebzeli", "Atıştırmalık", "Tatlı", "Kullanıcı"])
 
-# ANA EKRAN
+# Ana Ekran
 col1, col2, col3 = st.columns([1, 2, 1])
 with col2:
     try: st.image("logo.png", use_container_width=True)
@@ -239,114 +293,107 @@ with col2:
 
 st.title("Dolap Şefi")
 
-tab1, tab2 = st.tabs(["🔍 Tarif Ara", "🌟 Vitrin & Paylaş"])
+# Navigasyon
+t1, t2 = st.tabs(["🔍 Tarif Ara", "👨‍🍳 Tarif Paylaş"])
 
-# --- TAB 1: ARAMA ---
-with tab1:
-    if st.session_state.secilen_tarif is None:
-        malzemeler = st.text_input("Ne yemek istersin?", placeholder="Örn: Patates, Mantar, Pizza...")
-        sonuclar = tarifleri_bul(malzemeler, kategori)
+with t1:
+    if st.session_state.secilen is None:
+        aramas = st.text_input("Bugün canın ne çekiyor?", placeholder="Malzeme (Patates, Tavuk) veya Yemek Adı...")
+        sonuclar = tarifleri_bul(aramas, kat)
         
         if sonuclar:
-            st.markdown(f"##### 🎉 {len(sonuclar)} Tarif")
+            st.write(f"🎉 **{len(sonuclar)}** Lezzet Seni Bekliyor")
             for i, t in enumerate(sonuclar):
-                with st.container():
-                    c1, c2 = st.columns([3, 1])
-                    c1.markdown(f"**{t['ad']}** ({t.get('kat','Genel')})\n\n_{t['desc']}_")
-                    if c2.button("İncele", key=f"btn_{i}"):
-                        st.session_state.secilen_tarif = t
-                        st.rerun()
-                    st.markdown("---")
+                # Kart Görünümü
+                st.markdown(f"""
+                <div class="haber-kart">
+                    <h3 style="margin:0; color:#FFCC00;">{t['ad']}</h3>
+                    <p style="color:#ccc; font-style:italic; font-size:0.9rem;">{t['desc']}</p>
+                    <span style="background:rgba(255,255,255,0.1); padding:3px 8px; border-radius:5px; font-size:0.8rem;">{t.get('kat','Genel')}</span>
+                </div>
+                """, unsafe_allow_html=True)
+                if st.button(f"Tarife Git 👉", key=f"btn_{i}"):
+                    st.session_state.secilen = t
+                    st.rerun()
         else:
-            st.info("Bu kriterde tarif bulunamadı.")
+            st.warning("Bu kriterde tarif bulamadım şefim. Başka bir şey deneyelim mi?")
             
     else:
-        # DETAY SAYFASI
-        t = st.session_state.secilen_tarif
-        if st.button("⬅️ Listeye Dön"):
-            st.session_state.secilen_tarif = None
+        # DETAY EKRANI (FULL EKRAN)
+        t = st.session_state.secilen
+        if st.button("⬅️ Geri Dön"):
+            st.session_state.secilen = None
             st.rerun()
         
-        st.header(t['ad'])
-        st.info(f"💡 {t['desc']}")
+        st.markdown(f"<h1>{t['ad']}</h1>", unsafe_allow_html=True)
+        st.caption(f"Kategori: {t.get('kat','Genel')}")
         
-        c1, c2 = st.columns(2)
-        c1.markdown("#### 🛒 Malzemeler")
-        for m in t['malz']: c1.markdown(f"- {m}")
+        c1, c2 = st.columns([1, 2])
         
-        c2.markdown("#### 👨‍🍳 Yapılışı")
-        c2.write(t['tar'])
-        
-        # MİGROS BUTONU
-        ana_malz = t['malz'][0].split(" ")[-1] if t['malz'] else "Yemek"
-        st.markdown(f'<a href="https://www.migros.com.tr/arama?q={ana_malz}" target="_blank" class="btn-migros">🍊 Migros\'tan Al</a>', unsafe_allow_html=True)
-        
-        # YORUMLAR
-        st.markdown("---")
-        st.subheader("Yorumlar")
-        if st.session_state.login_status:
-            with st.form("y_form"):
-                y_mesaj = st.text_area("Yorum yaz...")
-                if st.form_submit_button("Gönder"):
-                    yorum_ekle(t['ad'], st.session_state.username, y_mesaj)
-                    st.rerun()
-        else:
-            st.warning("Yorum yapmak için giriş yapmalısın.")
+        with c1:
+            st.markdown('<div class="malzeme-kutusu"><h4>🛒 Malzemeler</h4><ul>', unsafe_allow_html=True)
+            malz = t['malz'] if isinstance(t['malz'], list) else t['malz'].split('\n')
+            for m in malz: st.markdown(f"<li>{m}</li>", unsafe_allow_html=True)
+            st.markdown("</ul></div>", unsafe_allow_html=True)
             
-        for y in yorumlari_yukle().get(t['ad'], []):
-            st.markdown(f"<div class='yorum-kutu'><b>{y['isim']}</b>: {y['yorum']} <small>({y['tarih']})</small></div>", unsafe_allow_html=True)
+            # Migros Butonu
+            ana_malz = malz[0].split(" ")[-1] if malz else "Yemek"
+            st.markdown(f'<a href="https://www.migros.com.tr/arama?q={ana_malz}" target="_blank" class="btn-migros">🍊 Malzemeleri Al</a>', unsafe_allow_html=True)
 
-# --- TAB 2: VİTRİN & EKLEME ---
-with tab2:
-    st.subheader("Topluluk Tarifleri")
-    
-    # Sadece Kullanıcı Tariflerini Göster
-    k_tarifler = tarifleri_yukle()
-    
-    if not k_tarifler:
-        st.info("Henüz kullanıcı tarifi yok.")
-    
-    for idx, k in enumerate(k_tarifler):
-        col_a, col_b = st.columns([4, 1])
-        with col_a:
-            st.markdown(f"#### {k['ad']} \n *Şef: {k.get('sef', 'Anonim')}*")
-            st.caption(k['desc'])
-        with col_b:
-            if st.button(f"❤️ {k.get('likes',0)}", key=f"lk_{idx}"):
-                begeni_arttir(idx)
-                st.rerun()
+        with c2:
+            st.markdown("### 👨‍🍳 Hazırlanışı")
+            st.markdown(f"<div style='font-size:1.1rem; line-height:1.8; color:#eee;'>{t['tar']}</div>", unsafe_allow_html=True)
             
-            # --- ADMİN SİLME BUTONU ---
-            if st.session_state.username == "admin":
-                if st.button("🗑️ SİL", key=f"del_{idx}"):
-                    if tarifi_sil(idx):
-                        st.success("Silindi!")
+            # Yorumlar
+            st.markdown("---")
+            st.subheader("💬 Yorumlar")
+            if st.session_state.login:
+                with st.form("yform"):
+                    ymsg = st.text_area("Yorumun nedir?")
+                    if st.form_submit_button("Gönder"):
+                        yorum_ekle(t['ad'], st.session_state.user, ymsg)
+                        st.rerun()
+            else: st.info("Yorum yapmak için giriş yap.")
+            
+            yorumlar = veri_yukle(YORUM_DOSYASI).get(t['ad'], [])
+            for y in yorumlar:
+                st.markdown(f"<div class='yorum-kutu'><b>{y['isim']}</b> <small>{y['tarih']}</small><br>{y['msg']}</div>", unsafe_allow_html=True)
+
+with t2:
+    st.header("Topluluk Tarifleri & Ekleme")
+    
+    # Ekleme Formu
+    if st.session_state.login:
+        with st.expander("➕ Yeni Tarif Ekle", expanded=True):
+            with st.form("add"):
+                ta = st.text_input("Yemek Adı")
+                td = st.text_input("Kısa Açıklama (İştah açıcı olsun)")
+                tm = st.text_area("Malzemeler (Alt alta veya virgülle)")
+                tt = st.text_area("Tarif (Detaylı anlat)")
+                tkat = st.selectbox("Kategori", ["Kullanıcı", "Kahvaltı", "Ana Yemek", "Tatlı"])
+                if st.form_submit_button("Yayınla"):
+                    if ta and tt:
+                        yeni = {"ad": ta, "desc": td, "malz": tm.split("\n"), "tar": tt, "kat": tkat, "sef": st.session_state.user}
+                        tarif_ekle(yeni)
+                        st.success("Tarif eklendi!")
                         time.sleep(1)
                         st.rerun()
-        st.markdown("---")
-
-    # TARİF EKLEME
-    if st.session_state.login_status:
-        with st.expander("➕ Yeni Tarif Ekle"):
-            with st.form("add_form"):
-                t_ad = st.text_input("Yemek Adı")
-                t_desc = st.text_input("Kısa Açıklama")
-                t_malz = st.text_area("Malzemeler (Virgülle ayır)")
-                t_tar = st.text_area("Yapılışı")
-                if st.form_submit_button("Paylaş"):
-                    yeni = {
-                        "ad": t_ad, "kat": "Kullanıcı", 
-                        "sef": st.session_state.username, 
-                        "desc": t_desc, 
-                        "malz": t_malz.split(","), 
-                        "tar": t_tar, 
-                        "likes": 0
-                    }
-                    tarifi_kaydet(yeni)
-                    st.success("Tarif eklendi!")
-                    time.sleep(1)
-                    st.rerun()
     else:
-        st.info("Tarif eklemek için lütfen giriş yapın.")
+        st.warning("Tarif eklemek için giriş yapmalısın.")
+    
+    st.markdown("---")
+    # Kullanıcı Tariflerini Listele (Admin Silebilir)
+    k_tarifler = veri_yukle(TARIF_DOSYASI)
+    if k_tarifler:
+        for i, k in enumerate(k_tarifler):
+            col_x, col_y = st.columns([4, 1])
+            col_x.markdown(f"**{k['ad']}** (Şef: {k.get('sef','Anonim')})\n\n_{k['desc']}_")
+            if st.session_state.user == "admin":
+                if col_y.button("🗑️", key=f"del_{i}"):
+                    tarif_sil(i)
+                    st.rerun()
+            st.markdown("---")
+    else:
+        st.info("Henüz kullanıcı tarifi yok. İlk sen ekle!")
 
-st.markdown("<div style='text-align:center; margin-top:50px; color:#666;'>© 2026 Dolap Şefi</div>", unsafe_allow_html=True)
+st.markdown("<br><center><small>© 2026 Dolap Şefi</small></center>", unsafe_allow_html=True)
