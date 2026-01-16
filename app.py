@@ -12,14 +12,13 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# 🔥 GÜVENLİK ŞİFRESİ (Tarif Eklemek İçin)
+# 🔥 GÜVENLİK ŞİFRESİ
 ADMIN_SIFRESI = "2026"
 
-# --- 2. VERİTABANI SİSTEMLERİ (TARİFLER VE YORUMLAR) ---
+# --- 2. VERİTABANI SİSTEMLERİ ---
 TARIF_DOSYASI = "kullanici_tarifleri.json"
 YORUM_DOSYASI = "yorumlar.json"
 
-# --- Tarif Fonksiyonları ---
 def tarifleri_yukle():
     if os.path.exists(TARIF_DOSYASI):
         with open(TARIF_DOSYASI, "r", encoding="utf-8") as f:
@@ -45,7 +44,6 @@ def begeni_arttir(index):
         with open(TARIF_DOSYASI, "w", encoding="utf-8") as f:
             json.dump(tarifler, f, ensure_ascii=False, indent=4)
 
-# --- Yorum Fonksiyonları (YENİ!) ---
 def yorumlari_yukle():
     if os.path.exists(YORUM_DOSYASI):
         with open(YORUM_DOSYASI, "r", encoding="utf-8") as f:
@@ -65,7 +63,7 @@ def yorum_ekle(yemek_adi, isim, yorum):
         "yorum": yorum,
         "tarih": datetime.now().strftime("%d-%m-%Y %H:%M")
     }
-    tum_yorumlar[yemek_adi].insert(0, yeni_yorum) # En yeniyi başa ekle
+    tum_yorumlar[yemek_adi].insert(0, yeni_yorum)
     
     with open(YORUM_DOSYASI, "w", encoding="utf-8") as f:
         json.dump(tum_yorumlar, f, ensure_ascii=False, indent=4)
@@ -116,24 +114,36 @@ TUM_TARIFLER = [
     {"ad": "Cacık", "kat": "Meze", "malz": ["Yoğurt", "Salatalık", "Sarımsak", "Nane", "Zeytinyağı"], "desc": "Pilavın ekürisi.", "tar": "1. Salatalıkları rendeleyip yoğurtla karıştır.\n2. Ezilmiş sarımsak ve tuz ekle.\n3. Üzerine zeytinyağı ve nane gezdir."}
 ]
 
-def tarif_uret(malzeme):
-    m = malzeme.title()
-    return {
-        "ad": f"Fırında Özel {m}", "kat": "Şefin Spesiyali",
-        "malz": [m, "Zeytinyağı", "Kekik", "Tuz", "Karabiber"],
-        "desc": "Eldeki malzemeyle yapılabilecek en garanti lezzet.",
-        "tar": f"1. {m} malzemesini güzelce yıkayın ve uygun boyutta doğrayın.\n2. Bir kasede zeytinyağı ve baharatlarla harmanlayın.\n3. Yağlı kağıt serili fırın tepsisine yayın.\n4. 200 derece fırında üzerleri kızarana kadar (yaklaşık 20-25dk) pişirin.\n5. Yanına yoğurtlu bir sos ile servis yapın."
-    }
-
+# --- AKILLI ARAMA ALGORİTMASI (OR MANTIĞI) ---
 def tarifleri_bul(girdi, kategori_filtresi):
+    # Girdiyi temizle (küçük harf, virgülleri boşluk yap, listeye çevir)
     girdi = girdi.lower()
+    # Örnek: "domates, marul" -> ['domates', 'marul']
+    aranan_kelimeler = [x.strip() for x in girdi.replace(",", " ").split() if x.strip()]
+    
     bulunanlar = []
     tam_liste = TUM_TARIFLER + tarifleri_yukle()
+    
     for tarif in tam_liste:
-        if kategori_filtresi != "Tümü" and tarif.get("kat") != kategori_filtresi: continue
+        # 1. Kategori Kontrolü
+        if kategori_filtresi != "Tümü" and tarif.get("kat") != kategori_filtresi:
+            continue
+            
+        # 2. Malzeme Eşleşmesi (VEYA Mantığı)
+        # Tarifin malzemelerini ve adını tek bir metne çeviriyoruz
         malz_text = " ".join(tarif["malz"]).lower() if isinstance(tarif["malz"], list) else str(tarif["malz"]).lower()
-        if not girdi or (girdi in malz_text or girdi in tarif["ad"].lower()): bulunanlar.append(tarif)
-    if not bulunanlar and girdi and kategori_filtresi == "Tümü": bulunanlar.append(tarif_uret(girdi))
+        tarif_adi = tarif["ad"].lower()
+        
+        # Eğer arama kutusu boşsa hepsini göster (Kategoriye uyanları)
+        if not aranan_kelimeler:
+            bulunanlar.append(tarif)
+        else:
+            # Aranan kelimelerden HERHANGİ BİRİ varsa ekle
+            for kelime in aranan_kelimeler:
+                if kelime in malz_text or kelime in tarif_adi:
+                    bulunanlar.append(tarif)
+                    break # Bir eşleşme yeterli, diğer kelimeye bakmaya gerek yok
+                    
     return bulunanlar
 
 # --- 6. ARAYÜZ ---
@@ -163,10 +173,13 @@ tab1, tab2 = st.tabs(["🔥 Tarif Bulucu", "🏆 Şefler Vitrini"])
 # --- TAB 1: ARAMA & DETAY & YORUMLAR ---
 with tab1:
     if st.session_state.secilen_tarif is None:
-        malzemeler = st.text_input("Dolabında ne var?", placeholder="Örn: Tavuk, Krema, Makarna...")
+        malzemeler = st.text_input("Dolabında ne var?", placeholder="Örn: Domates, Biber, Yumurta... (Hepsini bulur!)")
+        
+        # Arama Fonksiyonunu Çağır
         sonuclar = tarifleri_bul(malzemeler, kategori)
         
-        if malzemeler or kategori != "Tümü":
+        # Sonuç Gösterimi
+        if sonuclar:
             st.markdown(f"##### 🎉 {len(sonuclar)} Lezzet Bulundu")
             for i, tarif in enumerate(sonuclar):
                 col_a, col_b = st.columns([3, 1])
@@ -186,6 +199,9 @@ with tab1:
                     if st.button("Tarife Bak →", key=f"btn_{i}"):
                         st.session_state.secilen_tarif = tarif
                         st.rerun()
+        else:
+             st.warning("😔 Malesef bu malzemelerle eşleşen bir tarif bulamadım. Başka bir malzeme dener misin?")
+
     else:
         # --- DETAY EKRANI ---
         t = st.session_state.secilen_tarif
@@ -214,7 +230,7 @@ with tab1:
              link = f"https://www.migros.com.tr/arama?q={ana_malzeme}"
              st.markdown(f'<a href="{link}" target="_blank" class="btn-migros">🍊 Malzemeleri Migros\'tan Söyle</a>', unsafe_allow_html=True)
 
-        # --- YORUM BÖLÜMÜ (YENİ EKLENDİ) ---
+        # --- YORUM BÖLÜMÜ ---
         st.markdown("---")
         st.subheader(f"💬 {t['ad']} Hakkında Yorumlar")
         
