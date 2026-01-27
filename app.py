@@ -69,44 +69,83 @@ def detay_getir(tarif_id):
     except: return None
     return None
 
-# --- 4. CSS TASARIM (MOBİL UYUMLU) ---
+# --- 4. CSS TASARIM (BEYAZ EKRAN SORUNU GİDERİLDİ) ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
 
-/* Genel */
-.stApp { background-color: #0e1117; background-image: radial-gradient(circle at 50% 0%, #2b0c0c 0%, #0e1117 80%); color: white; font-family: 'Poppins', sans-serif; }
+/* TÜM SİTEYİ ZORLA SİYAH YAP (FORCE DARK) */
+:root {
+    --primary-color: #FF9966;
+    --background-color: #0e1117;
+    --secondary-background-color: #1E1E1E;
+    --text-color: #ffffff;
+}
+
+/* Sayfa Arka Planı */
+.stApp {
+    background-color: #0e1117 !important;
+    background-image: radial-gradient(circle at 50% 0%, #2b0c0c 0%, #0e1117 80%) !important;
+    color: white !important;
+    font-family: 'Poppins', sans-serif;
+}
 
 /* Başlık */
-h1 { font-weight: 900; font-size: 3rem; background: -webkit-linear-gradient(45deg, #FF9966, #FF5E62); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-align: center; }
+h1 {
+    font-weight: 900;
+    font-size: 3rem;
+    background: -webkit-linear-gradient(45deg, #FF9966, #FF5E62);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-align: center;
+    margin-bottom: 20px;
+}
 
 /* Kartlar */
-[data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] { 
-    background: rgba(255, 255, 255, 0.05); 
-    border: 1px solid rgba(255, 255, 255, 0.1); 
-    border-radius: 15px; 
-    padding: 15px; 
-    transition: transform 0.3s; 
+[data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] {
+    background: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 15px;
+    padding: 15px;
+    transition: transform 0.3s;
 }
-[data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"]:hover { 
-    border-color: #FF9966; 
-    transform: translateY(-5px); 
+[data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"]:hover {
+    border-color: #FF9966;
+    transform: translateY(-5px);
 }
 
 img { border-radius: 10px; width: 100%; object-fit: cover; }
 
 /* Butonlar */
-.stButton > button { width: 100%; border-radius: 10px; font-weight: 700; color: white; background: linear-gradient(90deg, #FF9966 0%, #FF5E62 100%); border: none; padding: 10px; }
+.stButton > button {
+    width: 100%;
+    border-radius: 10px;
+    font-weight: 700;
+    color: white !important;
+    background: linear-gradient(90deg, #FF9966 0%, #FF5E62 100%) !important;
+    border: none;
+    padding: 10px;
+}
 
 /* Migros Butonu */
-.btn-migros { display: block; width: 100%; background: linear-gradient(45deg, #F7941D, #FFCC00); color: white !important; text-align: center; padding: 15px; border-radius: 12px; font-weight: 900; text-decoration: none; margin-top: 20px; box-shadow: 0 4px 15px rgba(247, 148, 29, 0.4); transition: 0.3s; }
-.btn-migros:hover { transform: scale(1.05); }
+.btn-migros {
+    display: block; width: 100%;
+    background: linear-gradient(45deg, #F7941D, #FFCC00);
+    color: white !important;
+    text-align: center;
+    padding: 15px;
+    border-radius: 12px;
+    font-weight: 900;
+    text-decoration: none;
+    margin-top: 20px;
+    box-shadow: 0 4px 15px rgba(247, 148, 29, 0.4);
+    transition: 0.3s;
+}
 
-/* --- MOBİL UYUM (RESPONSIVE) --- */
+/* MOBİL UYUM */
 @media only screen and (max-width: 600px) {
     h1 { font-size: 2rem !important; }
     .stButton > button { padding: 8px !important; font-size: 0.9rem !important; }
-    /* Mobilde kartlar daha sıkı dursun */
     [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] { padding: 10px; }
 }
 </style>
