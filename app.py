@@ -5,41 +5,45 @@ import pandas as pd
 # --- 1. AYARLAR ---
 st.set_page_config(page_title="Dolap Şefi: GLOBAL", page_icon="🌍", layout="wide")
 
-# 🔥🔥🔥 BURAYA DİKKAT! 🔥🔥🔥
-# Spoonacular sitesinden aldığın API Key'i tırnak içine yapıştır.
-# Örnek: API_KEY = "a1b2c3d4e5..."
-API_KEY = "1cb477a1c23a4594aac7d09f5099ae8b
-" 
+# 🔥🔥🔥 API ANAHTARIN BURADA (Hatasız) 🔥🔥🔥
+API_KEY = "1cb477a1c23a4594aac7d09f5099ae8b"
 
-# --- 2. FONKSİYONLAR (API BAĞLANTISI) ---
+# --- 2. FONKSİYONLAR (Spoonacular API) ---
 def tarif_ara_malzeme_ile(malzemeler):
-    """Malzemelere göre yemek arar (Spoonacular API)"""
-    if API_KEY == "BURAYA_SPOONACULAR_API_KEYINI_YAPISTIR":
-        return None # Anahtar girilmemiş
-        
+    """Malzemelere göre yemek arar"""
     url = f"https://api.spoonacular.com/recipes/findByIngredients"
     params = {
         "apiKey": API_KEY,
         "ingredients": malzemeler,
-        "number": 12, # Kaç tarif gelsin?
-        "ranking": 1, # Malzemeyi en iyi kullananları getir
+        "number": 12, # 12 tane tarif getir
+        "ranking": 1, # En iyi eşleşenler
         "ignorePantry": True
     }
-    response = requests.get(url, params=params)
-    if response.status_code == 200:
-        return response.json()
-    return []
+    try:
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            return response.json()
+        elif response.status_code == 402:
+            st.error("Günlük API limitin dolmuş şefim! Yarın tekrar gel. (Bedava sürüm limiti)")
+            return []
+        else:
+            return []
+    except:
+        return []
 
 def tarif_detayi_getir(tarif_id):
-    """Seçilen yemeğin detaylı tarifini getirir"""
+    """Seçilen yemeğin detaylarını (Yapılışı, Malzemeler) getirir"""
     url = f"https://api.spoonacular.com/recipes/{tarif_id}/information"
     params = {"apiKey": API_KEY}
-    response = requests.get(url, params=params)
-    if response.status_code == 200:
-        return response.json()
+    try:
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            return response.json()
+    except:
+        return None
     return None
 
-# --- 3. ARAYÜZ TASARIMI ---
+# --- 3. TASARIM (CSS) ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;600&display=swap');
@@ -49,33 +53,27 @@ st.markdown("""
 .kart:hover { border-color: #96c93d; transform: translateY(-5px); }
 .resim { width: 100%; border-radius: 10px; height: 200px; object-fit: cover; }
 .yemek-adi { font-size: 1.1rem; font-weight: bold; margin-top: 10px; color: #eee; height: 50px; overflow: hidden; }
-.uyari { background-color: #ff4b4b; color: white; padding: 10px; border-radius: 5px; text-align: center; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. ANA SAYFA MANTIĞI ---
+# --- 4. ANA SAYFA ---
 st.markdown('<div class="baslik">🌍 Dolap Şefi: Global</div>', unsafe_allow_html=True)
 st.caption("Dünyadaki 360.000+ tarif arasından, senin dolabına uygun olanları bulur.")
 
-# API Key Kontrolü
-if API_KEY == "BURAYA_SPOONACULAR_API_KEYINI_YAPISTIR":
-    st.error("🚨 DİKKAT: API Anahtarı Eksik!")
-    st.info("Lütfen 'spoonacular.com' adresinden ücretsiz bir API Key al ve koddaki 'API_KEY' satırına yapıştır.")
-    st.stop()
-
-# Oturum Durumu (Sayfa yenilenince veri gitmesin diye)
+# Oturum Durumu
 if 'secilen_tarif' not in st.session_state: st.session_state.secilen_tarif = None
 
-# --- ARAMA BÖLÜMÜ ---
+# Arama Kutusu
 col1, col2 = st.columns([3, 1])
 with col1:
-    malzemeler = st.text_input("Dolabında ne var? (İngilizce yazarsan daha çok sonuç çıkar)", placeholder="Örn: tomato, cheese, chicken (veya domates, peynir)")
+    # Kullanıcıya ipucu verelim
+    malzemeler = st.text_input("Dolabında ne var? (İngilizce daha iyi sonuç verir)", placeholder="Örn: tomato, cheese, chicken (veya domates, peynir)")
 with col2:
-    st.write("")
-    st.write("")
+    st.write("") # Boşluk
+    st.write("") 
     ara_buton = st.button("🔍 Şef'e Sor", use_container_width=True)
 
-# --- SONUÇLARI GÖSTERME ---
+# --- ARAMA SONUÇLARI ---
 if ara_buton and malzemeler:
     with st.spinner("Dünya mutfağı taranıyor... 🌍"):
         sonuclar = tarif_ara_malzeme_ile(malzemeler)
@@ -83,7 +81,7 @@ if ara_buton and malzemeler:
         if sonuclar:
             st.success(f"🎉 Bu malzemelerle yapabileceğin {len(sonuclar)} harika tarif buldum!")
             
-            # 3 Kolonlu Izgara
+            # Kartları 3 kolon halinde diz
             cols = st.columns(3)
             for i, tarif in enumerate(sonuclar):
                 with cols[i % 3]:
@@ -94,14 +92,13 @@ if ara_buton and malzemeler:
                     </div>
                     """, unsafe_allow_html=True)
                     
-                    # Detay Butonu
                     if st.button(f"Tarife Git 👉", key=f"btn_{tarif['id']}"):
                         st.session_state.secilen_tarif = tarif['id']
                         st.rerun()
         else:
-            st.warning("😔 Bu malzemelerle eşleşen bir tarif bulamadım. Başka bir şey ekleyebilir misin?")
+            st.warning("😔 Bu malzemelerle eşleşen bir tarif bulamadım. Malzemeleri İngilizce yazmayı dener misin? (Örn: 'egg' yerine 'yumurta' yazınca bazen bulamayabilir)")
 
-# --- DETAY SAYFASI (MODAL GİBİ) ---
+# --- DETAY SAYFASI ---
 if st.session_state.secilen_tarif:
     st.markdown("---")
     with st.spinner("Tarif detayları getiriliyor..."):
@@ -119,15 +116,17 @@ if st.session_state.secilen_tarif:
             
             with c2:
                 st.header(detay['title'])
-                st.markdown(f"_{detay.get('summary', 'Açıklama yok.').split('.')[0]}._", unsafe_allow_html=True) # Özetin ilk cümlesi
+                # HTML temizliği yapılmış özet
+                ozet = detay.get('summary', 'Açıklama yok.').replace("<b>","").replace("</b>","").replace("<a href=","").replace("</a>","")
+                st.markdown(f"_{ozet[:400]}..._", unsafe_allow_html=True)
                 
                 st.success("**👨‍🍳 Hazırlanışı:**")
-                # Eğer adım adım anlatım varsa onu kullan, yoksa düz metin
+                # Adım adım anlatım varsa onu kullan
                 if detay.get('analyzedInstructions'):
                     for adim in detay['analyzedInstructions'][0]['steps']:
                         st.write(f"**{adim['number']}.** {adim['step']}")
                 else:
-                    st.write(detay.get('instructions', 'Tarif detayları kaynak sitede.'))
+                    st.write(detay.get('instructions', 'Tarif detayları kaynak sitede mevcut.'))
             
             if st.button("❌ Kapat / Listeye Dön"):
                 st.session_state.secilen_tarif = None
