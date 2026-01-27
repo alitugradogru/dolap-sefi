@@ -4,7 +4,7 @@ from deep_translator import GoogleTranslator
 
 # --- 1. AYARLAR ---
 st.set_page_config(
-    page_title="Dolabınızdaki Yardımcı", 
+    page_title="Dolap Şefi: Dolaptaki Yardımcınız", 
     page_icon="👨‍🍳", 
     layout="wide", 
     initial_sidebar_state="expanded"
@@ -30,7 +30,7 @@ def cevir_en_tr(metin):
     try: return GoogleTranslator(source='en', target='tr').translate(metin)
     except: return metin
 
-# KATEGORİ SÖZLÜĞÜ (Türkçe -> İngilizce API Karşılığı)
+# KATEGORİ SÖZLÜĞÜ
 KATEGORILER = {
     "Tümü": None,
     "Kahvaltı 🥞": "breakfast",
@@ -45,44 +45,39 @@ KATEGORILER = {
 def tarif_ara(malzemeler, kategori_kod):
     ingilizce_malz = cevir_tr_en(malzemeler)
     
-    # EĞER KATEGORİ SEÇİLMEDİYSE (ESKİ SİSTEM - findByIngredients)
-    if kategori_kod is None:
-        url = "https://api.spoonacular.com/recipes/findByIngredients"
-        params = {
-            "apiKey": API_KEY,
-            "ingredients": ingilizce_malz,
-            "number": 8,
-            "ranking": 1,
-            "ignorePantry": True
-        }
-        try:
-            response = requests.get(url, params=params)
-            if response.status_code == 200:
-                sonuclar = response.json()
-                for yemek in sonuclar:
-                    yemek['title_tr'] = cevir_en_tr(yemek['title'])
-                return sonuclar
-        except: return []
+    # Tüm aramaları artık 'complexSearch' ile yapıyoruz ki hem kategori hem malzeme çalışsın.
+    url = "https://api.spoonacular.com/recipes/complexSearch"
+    
+    params = {
+        "apiKey": API_KEY,
+        "number": 12, # 12 Tarif getir
+        "addRecipeInformation": False
+    }
 
-    # EĞER KATEGORİ SEÇİLDİYSE (YENİ SİSTEM - complexSearch)
+    # Eğer kategori seçildiyse parametreye ekle
+    if kategori_kod:
+        params["type"] = kategori_kod
+    
+    # Eğer malzeme yazıldıysa parametreye ekle
+    if ingilizce_malz:
+        params["includeIngredients"] = ingilizce_malz
+        params["sort"] = "min-missing-ingredients" # Malzemeye uygun olanı öne al
     else:
-        url = "https://api.spoonacular.com/recipes/complexSearch"
-        params = {
-            "apiKey": API_KEY,
-            "includeIngredients": ingilizce_malz, # Malzemeyi içer
-            "type": kategori_kod,                 # Ve bu kategoride olsun
-            "number": 8,
-            "addRecipeInformation": False         # Detayları sonra çekeceğiz
-        }
-        try:
-            response = requests.get(url, params=params)
-            if response.status_code == 200:
-                veriler = response.json()
-                sonuclar = veriler.get('results', []) # Liste 'results' anahtarının içinde
-                for yemek in sonuclar:
-                    yemek['title_tr'] = cevir_en_tr(yemek['title'])
-                return sonuclar
-        except: return []
+        # Malzeme yoksa ama kategori varsa, o kategorinin en popülerlerini getir
+        if kategori_kod:
+            params["sort"] = "popularity"
+        else:
+            return [] # Ne malzeme ne kategori varsa boş dön
+
+    try:
+        response = requests.get(url, params=params)
+        if response.status_code == 200:
+            veriler = response.json()
+            sonuclar = veriler.get('results', [])
+            for yemek in sonuclar:
+                yemek['title_tr'] = cevir_en_tr(yemek['title'])
+            return sonuclar
+    except: return []
     
     return []
 
@@ -231,24 +226,27 @@ else:
             "Ne yemek istersin?",
             list(KATEGORILER.keys())
         )
-        st.info("💡 İpucu: Soldan kategori seçip, sağ tarafa malzeme yazabilirsin.")
+        st.info("💡 **İpucu:** Kategori seçip 'BUL'a basman yeterli. İstersen malzeme de yazabilirsin.")
     
     secilen_kategori_kod = KATEGORILER[secilen_kategori_ismi]
 
     # --- ANA İÇERİK ---
-    st.title("👨‍🍳 Dolabınızdaki Yardımcı")
+    st.title("👨‍🍳 Dolap Şefi:\nDolaptaki Yardımcınız")
     
     # --- FORM (ENTER TUŞU DESTEĞİ) ---
     with st.form("arama_formu"):
         c1, c2 = st.columns([3, 1])
         with c1:
-            malz = st.text_input("Dolapta ne var?", placeholder="Örn: Tavuk, Krema...")
+            malz = st.text_input("Dolapta ne var? (İsteğe Bağlı)", placeholder="Örn: Tavuk, Krema (Boş bırakırsan menü gelir)")
         with c2:
             st.write("") 
             st.write("")
             ara_butonu = st.form_submit_button("🔍 BUL", use_container_width=True)
 
-    if ara_butonu and malz:
+    if ara_butonu:
+        # Malzeme yoksa ama Kategori varsa -> Kategori Menüleri Gelir
+        # Malzeme varsa -> Malzemeli Tarif Gelir
+        # Hiçbiri yoksa -> Hata vermez, boş döner
         with st.spinner(f"Aranıyor... ({secilen_kategori_ismi})"):
             st.session_state.arama_sonuclari = tarif_ara(malz, secilen_kategori_kod)
 
