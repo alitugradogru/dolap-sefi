@@ -4,7 +4,7 @@ from deep_translator import GoogleTranslator
 
 # --- 1. AYARLAR ---
 st.set_page_config(
-    page_title="Dolap Şefi: Dolabınızdaki yardımcı", 
+    page_title="Dolabınızdaki Yardımcı", 
     page_icon="👨‍🍳", 
     layout="wide", 
     initial_sidebar_state="expanded"
@@ -145,7 +145,7 @@ if st.session_state.sayfa == 'detay':
 
 # --- EKRAN 2: ANA SAYFA ---
 else:
-    st.title("👨‍🍳 Dolap Şefi: Mobil")
+    st.title("👨‍🍳 Dolabınızdaki Yardımcı")
     
     # --- FORM YAPISI (ENTER TUŞU İÇİN ŞART) ---
     with st.form("arama_formu"):
