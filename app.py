@@ -4,7 +4,7 @@ from deep_translator import GoogleTranslator
 
 # --- 1. AYARLAR ---
 st.set_page_config(
-    page_title="Dolap Şefi: Dolabınızdaki Yardımcı", 
+    page_title="Dolabınızdaki Yardımcı", 
     page_icon="👨‍🍳", 
     layout="wide", 
     initial_sidebar_state="expanded"
@@ -30,24 +30,60 @@ def cevir_en_tr(metin):
     try: return GoogleTranslator(source='en', target='tr').translate(metin)
     except: return metin
 
-def tarif_ara(malzemeler):
+# KATEGORİ SÖZLÜĞÜ (Türkçe -> İngilizce API Karşılığı)
+KATEGORILER = {
+    "Tümü": None,
+    "Kahvaltı 🥞": "breakfast",
+    "Ana Yemek 🥘": "main course",
+    "Çorba 🥣": "soup",
+    "Tatlı 🍰": "dessert",
+    "Atıştırmalık 🍿": "snack",
+    "Salata 🥗": "salad",
+    "İçecek 🥤": "drink"
+}
+
+def tarif_ara(malzemeler, kategori_kod):
     ingilizce_malz = cevir_tr_en(malzemeler)
-    url = "https://api.spoonacular.com/recipes/findByIngredients"
-    params = {
-        "apiKey": API_KEY,
-        "ingredients": ingilizce_malz,
-        "number": 8,
-        "ranking": 1,
-        "ignorePantry": True
-    }
-    try:
-        response = requests.get(url, params=params)
-        if response.status_code == 200:
-            sonuclar = response.json()
-            for yemek in sonuclar:
-                yemek['title_tr'] = cevir_en_tr(yemek['title'])
-            return sonuclar
-    except: return []
+    
+    # EĞER KATEGORİ SEÇİLMEDİYSE (ESKİ SİSTEM - findByIngredients)
+    if kategori_kod is None:
+        url = "https://api.spoonacular.com/recipes/findByIngredients"
+        params = {
+            "apiKey": API_KEY,
+            "ingredients": ingilizce_malz,
+            "number": 8,
+            "ranking": 1,
+            "ignorePantry": True
+        }
+        try:
+            response = requests.get(url, params=params)
+            if response.status_code == 200:
+                sonuclar = response.json()
+                for yemek in sonuclar:
+                    yemek['title_tr'] = cevir_en_tr(yemek['title'])
+                return sonuclar
+        except: return []
+
+    # EĞER KATEGORİ SEÇİLDİYSE (YENİ SİSTEM - complexSearch)
+    else:
+        url = "https://api.spoonacular.com/recipes/complexSearch"
+        params = {
+            "apiKey": API_KEY,
+            "includeIngredients": ingilizce_malz, # Malzemeyi içer
+            "type": kategori_kod,                 # Ve bu kategoride olsun
+            "number": 8,
+            "addRecipeInformation": False         # Detayları sonra çekeceğiz
+        }
+        try:
+            response = requests.get(url, params=params)
+            if response.status_code == 200:
+                veriler = response.json()
+                sonuclar = veriler.get('results', []) # Liste 'results' anahtarının içinde
+                for yemek in sonuclar:
+                    yemek['title_tr'] = cevir_en_tr(yemek['title'])
+                return sonuclar
+        except: return []
+    
     return []
 
 def detay_getir(tarif_id):
@@ -69,84 +105,88 @@ def detay_getir(tarif_id):
     except: return None
     return None
 
-# --- 4. CSS TASARIM (BEYAZ EKRAN SORUNU GİDERİLDİ) ---
+# --- 4. CSS TASARIM (Force Dark Mode & Mobile Fix) ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
 
-/* TÜM SİTEYİ ZORLA SİYAH YAP (FORCE DARK) */
-:root {
-    --primary-color: #FF9966;
-    --background-color: #0e1117;
-    --secondary-background-color: #1E1E1E;
-    --text-color: #ffffff;
+/* ZORLA KARANLIK MOD */
+:root { color-scheme: dark; }
+
+[data-testid="stAppViewContainer"], .stApp { 
+    background-color: #0e1117 !important; 
+    background-image: radial-gradient(circle at 50% 0%, #2b0c0c 0%, #0e1117 80%) !important; 
+    color: white !important; 
+    font-family: 'Poppins', sans-serif; 
 }
 
-/* Sayfa Arka Planı */
-.stApp {
-    background-color: #0e1117 !important;
-    background-image: radial-gradient(circle at 50% 0%, #2b0c0c 0%, #0e1117 80%) !important;
-    color: white !important;
-    font-family: 'Poppins', sans-serif;
-}
+/* Tüm yazıları beyaz yap */
+p, h1, h2, h3, h4, span, div, label { color: white !important; }
 
 /* Başlık */
-h1 {
-    font-weight: 900;
-    font-size: 3rem;
-    background: -webkit-linear-gradient(45deg, #FF9966, #FF5E62);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    text-align: center;
-    margin-bottom: 20px;
+h1 { 
+    font-weight: 900; 
+    font-size: 3rem; 
+    background: -webkit-linear-gradient(45deg, #FF9966, #FF5E62); 
+    -webkit-background-clip: text; 
+    -webkit-text-fill-color: transparent !important; 
+    text-align: center; 
 }
 
 /* Kartlar */
-[data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] {
-    background: rgba(255, 255, 255, 0.05) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 15px;
-    padding: 15px;
-    transition: transform 0.3s;
-}
-[data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"]:hover {
-    border-color: #FF9966;
-    transform: translateY(-5px);
+[data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] { 
+    background: rgba(255, 255, 255, 0.05) !important; 
+    border: 1px solid rgba(255, 255, 255, 0.1); 
+    border-radius: 15px; 
+    padding: 15px; 
+    transition: transform 0.3s; 
 }
 
 img { border-radius: 10px; width: 100%; object-fit: cover; }
 
 /* Butonlar */
-.stButton > button {
-    width: 100%;
-    border-radius: 10px;
-    font-weight: 700;
-    color: white !important;
-    background: linear-gradient(90deg, #FF9966 0%, #FF5E62 100%) !important;
-    border: none;
-    padding: 10px;
+.stButton > button { 
+    width: 100%; 
+    border-radius: 10px; 
+    font-weight: 700; 
+    color: white !important; 
+    background: linear-gradient(90deg, #FF9966 0%, #FF5E62 100%) !important; 
+    border: none; 
+    padding: 10px; 
 }
 
-/* Migros Butonu */
-.btn-migros {
-    display: block; width: 100%;
-    background: linear-gradient(45deg, #F7941D, #FFCC00);
-    color: white !important;
-    text-align: center;
-    padding: 15px;
-    border-radius: 12px;
-    font-weight: 900;
-    text-decoration: none;
-    margin-top: 20px;
-    box-shadow: 0 4px 15px rgba(247, 148, 29, 0.4);
-    transition: 0.3s;
+/* Migros Butonu (Turuncu & Dikkat Çekici) */
+.btn-migros { 
+    display: block; width: 100%; 
+    background: linear-gradient(45deg, #F7941D, #FFCC00); 
+    color: white !important; 
+    text-align: center; 
+    padding: 15px; 
+    border-radius: 12px; 
+    font-weight: 900; 
+    text-decoration: none; 
+    margin-top: 20px; 
+    box-shadow: 0 4px 15px rgba(247, 148, 29, 0.4); 
+    transition: 0.3s; 
+}
+.btn-migros:hover { transform: scale(1.05); }
+
+/* Sol Menü (Sidebar) Rengi */
+[data-testid="stSidebar"] {
+    background-color: #161a25 !important;
+    border-right: 1px solid #333;
 }
 
-/* MOBİL UYUM */
+/* Input (Arama Kutusu) Rengi */
+.stTextInput > div > div > input {
+    color: white !important;
+    background-color: #262730 !important;
+}
+
+/* Mobil Uyum */
 @media only screen and (max-width: 600px) {
     h1 { font-size: 2rem !important; }
     .stButton > button { padding: 8px !important; font-size: 0.9rem !important; }
-    [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] { padding: 10px; }
 }
 </style>
 """, unsafe_allow_html=True)
@@ -169,7 +209,7 @@ if st.session_state.sayfa == 'detay':
                 ana_malz = d['extendedIngredients'][0]['original'].split(' ')[-1]
                 st.markdown(f'<a href="https://www.migros.com.tr/arama?q={ana_malz}" target="_blank" class="btn-migros">🛒 {ana_malz} Sipariş Ver</a>', unsafe_allow_html=True)
             with col2:
-                st.header(d['title'])
+                st.markdown(f"<h2 style='color: #FF9966;'>{d['title']}</h2>", unsafe_allow_html=True)
                 st.markdown("### 🛒 Malzemeler")
                 for m in d['extendedIngredients']:
                     st.write(f"• {m['original']}")
@@ -184,22 +224,33 @@ if st.session_state.sayfa == 'detay':
 
 # --- EKRAN 2: ANA SAYFA ---
 else:
-    st.title("👨‍🍳 Dolap Şefi: Dolabınızdaki Yardımcı")
+    # --- SOL MENÜ (SIDEBAR) ---
+    with st.sidebar:
+        st.title("🍽️ Menü")
+        secilen_kategori_ismi = st.radio(
+            "Ne yemek istersin?",
+            list(KATEGORILER.keys())
+        )
+        st.info("💡 İpucu: Soldan kategori seçip, sağ tarafa malzeme yazabilirsin.")
     
-    # --- FORM YAPISI (ENTER TUŞU İÇİN ŞART) ---
+    secilen_kategori_kod = KATEGORILER[secilen_kategori_ismi]
+
+    # --- ANA İÇERİK ---
+    st.title("👨‍🍳 Dolabınızdaki Yardımcı")
+    
+    # --- FORM (ENTER TUŞU DESTEĞİ) ---
     with st.form("arama_formu"):
         c1, c2 = st.columns([3, 1])
         with c1:
             malz = st.text_input("Dolapta ne var?", placeholder="Örn: Tavuk, Krema...")
         with c2:
-            st.write("") # Hizalama boşluğu
+            st.write("") 
             st.write("")
-            # Form submit butonu (Enter ile çalışır)
             ara_butonu = st.form_submit_button("🔍 BUL", use_container_width=True)
 
     if ara_butonu and malz:
-        with st.spinner("Aranıyor..."):
-            st.session_state.arama_sonuclari = tarif_ara(malz)
+        with st.spinner(f"Aranıyor... ({secilen_kategori_ismi})"):
+            st.session_state.arama_sonuclari = tarif_ara(malz, secilen_kategori_kod)
 
     # Sonuçları Göster
     if st.session_state.arama_sonuclari:
