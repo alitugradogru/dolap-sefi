@@ -184,7 +184,7 @@ if st.session_state.sayfa == 'detay':
 
 # --- EKRAN 2: ANA SAYFA ---
 else:
-    st.title("👨‍🍳 Dolap Şefi: Mobil")
+    st.title("👨‍🍳 Dolap Şefi: Dolabınızdaki Yardımcı")
     
     # --- FORM YAPISI (ENTER TUŞU İÇİN ŞART) ---
     with st.form("arama_formu"):
