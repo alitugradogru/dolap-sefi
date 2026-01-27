@@ -4,7 +4,7 @@ from deep_translator import GoogleTranslator
 
 # --- 1. AYARLAR ---
 st.set_page_config(
-    page_title="Dolabınızdaki Yardımcı", 
+    page_title="Dolap Şefi: Dolabınızdaki Yardımcı", 
     page_icon="👨‍🍳", 
     layout="wide", 
     initial_sidebar_state="expanded"
