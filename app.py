@@ -21,7 +21,9 @@ if 'secilen_tarif_id' not in st.session_state:
 if 'arama_sonuclari' not in st.session_state:
     st.session_state.arama_sonuclari = []
 
-# --- 3. ÇEVİRİ VE API FONKSİYONLARI ---
+# --- 3. ÇEVİRİ VE API FONKSİYONLARI (TURBO MOD: CACHE EKLENDİ) ---
+
+# Çevirileri hafızada tutmuyoruz çünkü çok değişken, ama API sonuçlarını tutacağız.
 def cevir_tr_en(metin):
     try: return GoogleTranslator(source='tr', target='en').translate(metin)
     except: return metin
@@ -42,38 +44,40 @@ KATEGORILER = {
     "İçecek 🥤": "drink"
 }
 
+# 🔥🔥🔥 TURBO MOTOR: @st.cache_data 🔥🔥🔥
+# Bu komut, yapılan aramayı 1 saat boyunca (ttl=3600) hafızada tutar.
+# Aynı aramayı yaparsan API'ye gitmez, şak diye açar.
+
+@st.cache_data(ttl=3600, show_spinner=False)
 def tarif_ara(malzemeler, kategori_kod):
     ingilizce_malz = cevir_tr_en(malzemeler)
     
-    # Tüm aramaları artık 'complexSearch' ile yapıyoruz ki hem kategori hem malzeme çalışsın.
     url = "https://api.spoonacular.com/recipes/complexSearch"
     
     params = {
         "apiKey": API_KEY,
-        "number": 12, # 12 Tarif getir
+        "number": 12, 
         "addRecipeInformation": False
     }
 
-    # Eğer kategori seçildiyse parametreye ekle
     if kategori_kod:
         params["type"] = kategori_kod
     
-    # Eğer malzeme yazıldıysa parametreye ekle
     if ingilizce_malz:
         params["includeIngredients"] = ingilizce_malz
-        params["sort"] = "min-missing-ingredients" # Malzemeye uygun olanı öne al
+        params["sort"] = "min-missing-ingredients"
     else:
-        # Malzeme yoksa ama kategori varsa, o kategorinin en popülerlerini getir
         if kategori_kod:
             params["sort"] = "popularity"
         else:
-            return [] # Ne malzeme ne kategori varsa boş dön
+            return []
 
     try:
         response = requests.get(url, params=params)
         if response.status_code == 200:
             veriler = response.json()
             sonuclar = veriler.get('results', [])
+            # Başlıkları burada çevirip hafızaya atıyoruz
             for yemek in sonuclar:
                 yemek['title_tr'] = cevir_en_tr(yemek['title'])
             return sonuclar
@@ -81,6 +85,7 @@ def tarif_ara(malzemeler, kategori_kod):
     
     return []
 
+@st.cache_data(ttl=3600, show_spinner=False)
 def detay_getir(tarif_id):
     url = f"https://api.spoonacular.com/recipes/{tarif_id}/information"
     params = {"apiKey": API_KEY}
@@ -88,6 +93,7 @@ def detay_getir(tarif_id):
         response = requests.get(url, params=params)
         if response.status_code == 200:
             detay = response.json()
+            # Tüm çevirileri yapıp paketliyoruz
             detay['title'] = cevir_en_tr(detay['title'])
             for m in detay['extendedIngredients']:
                 m['original'] = cevir_en_tr(m['original'])
@@ -100,25 +106,18 @@ def detay_getir(tarif_id):
     except: return None
     return None
 
-# --- 4. CSS TASARIM (Force Dark Mode & Mobile Fix) ---
+# --- 4. CSS TASARIM ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
-
-/* ZORLA KARANLIK MOD */
 :root { color-scheme: dark; }
-
 [data-testid="stAppViewContainer"], .stApp { 
     background-color: #0e1117 !important; 
     background-image: radial-gradient(circle at 50% 0%, #2b0c0c 0%, #0e1117 80%) !important; 
     color: white !important; 
     font-family: 'Poppins', sans-serif; 
 }
-
-/* Tüm yazıları beyaz yap */
 p, h1, h2, h3, h4, span, div, label { color: white !important; }
-
-/* Başlık */
 h1 { 
     font-weight: 900; 
     font-size: 3rem; 
@@ -127,8 +126,6 @@ h1 {
     -webkit-text-fill-color: transparent !important; 
     text-align: center; 
 }
-
-/* Kartlar */
 [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] { 
     background: rgba(255, 255, 255, 0.05) !important; 
     border: 1px solid rgba(255, 255, 255, 0.1); 
@@ -136,10 +133,7 @@ h1 {
     padding: 15px; 
     transition: transform 0.3s; 
 }
-
 img { border-radius: 10px; width: 100%; object-fit: cover; }
-
-/* Butonlar */
 .stButton > button { 
     width: 100%; 
     border-radius: 10px; 
@@ -149,8 +143,6 @@ img { border-radius: 10px; width: 100%; object-fit: cover; }
     border: none; 
     padding: 10px; 
 }
-
-/* Migros Butonu (Turuncu & Dikkat Çekici) */
 .btn-migros { 
     display: block; width: 100%; 
     background: linear-gradient(45deg, #F7941D, #FFCC00); 
@@ -165,20 +157,14 @@ img { border-radius: 10px; width: 100%; object-fit: cover; }
     transition: 0.3s; 
 }
 .btn-migros:hover { transform: scale(1.05); }
-
-/* Sol Menü (Sidebar) Rengi */
 [data-testid="stSidebar"] {
     background-color: #161a25 !important;
     border-right: 1px solid #333;
 }
-
-/* Input (Arama Kutusu) Rengi */
 .stTextInput > div > div > input {
     color: white !important;
     background-color: #262730 !important;
 }
-
-/* Mobil Uyum */
 @media only screen and (max-width: 600px) {
     h1 { font-size: 2rem !important; }
     .stButton > button { padding: 8px !important; font-size: 0.9rem !important; }
@@ -194,7 +180,8 @@ if st.session_state.sayfa == 'detay':
         st.session_state.sayfa = 'ana_sayfa'
         st.rerun()
 
-    with st.spinner("Tarif yükleniyor..."):
+    # Cache olduğu için burası ikinci açışta ışık hızında gelir
+    with st.spinner("Tarif hazırlanıyor..."):
         d = detay_getir(st.session_state.secilen_tarif_id)
         if d:
             col1, col2 = st.columns([1, 2])
@@ -219,7 +206,7 @@ if st.session_state.sayfa == 'detay':
 
 # --- EKRAN 2: ANA SAYFA ---
 else:
-    # --- SOL MENÜ (SIDEBAR) ---
+    # --- SOL MENÜ ---
     with st.sidebar:
         st.title("🍽️ Menü")
         secilen_kategori_ismi = st.radio(
@@ -230,27 +217,22 @@ else:
     
     secilen_kategori_kod = KATEGORILER[secilen_kategori_ismi]
 
-    # --- ANA İÇERİK ---
-    st.title("👨‍🍳 Dolap Şefi:Dolaptaki Yarımcınız")
+    st.title("👨‍🍳 Dolap Şefi:Dolaptaki Yardımcınız")
     
-    # --- FORM (ENTER TUŞU DESTEĞİ) ---
     with st.form("arama_formu"):
         c1, c2 = st.columns([3, 1])
         with c1:
-            malz = st.text_input("Dolapta ne var? (İsteğe Bağlı)", placeholder="Örn: Tavuk, Krema (Boş bırakırsan menü gelir)")
+            malz = st.text_input("Dolapta ne var? (İsteğe Bağlı)", placeholder="Örn: Tavuk, Krema...")
         with c2:
             st.write("") 
             st.write("")
             ara_butonu = st.form_submit_button("🔍 BUL", use_container_width=True)
 
     if ara_butonu:
-        # Malzeme yoksa ama Kategori varsa -> Kategori Menüleri Gelir
-        # Malzeme varsa -> Malzemeli Tarif Gelir
-        # Hiçbiri yoksa -> Hata vermez, boş döner
+        # Cache olduğu için aynı aramayı yaparsan beklemezsin
         with st.spinner(f"Aranıyor... ({secilen_kategori_ismi})"):
             st.session_state.arama_sonuclari = tarif_ara(malz, secilen_kategori_kod)
 
-    # Sonuçları Göster
     if st.session_state.arama_sonuclari:
         st.success(f"🎉 {len(st.session_state.arama_sonuclari)} tarif bulundu!")
         cols = st.columns(4)
