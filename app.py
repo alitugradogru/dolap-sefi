@@ -231,7 +231,7 @@ else:
     secilen_kategori_kod = KATEGORILER[secilen_kategori_ismi]
 
     # --- ANA İÇERİK ---
-    st.title("👨‍🍳 Dolap Şefi:\nDolaptaki Yardımcınız")
+    st.title("👨‍🍳 Dolap Şefi:Dolaptaki Yarımcınız")
     
     # --- FORM (ENTER TUŞU DESTEĞİ) ---
     with st.form("arama_formu"):
