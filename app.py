@@ -40,6 +40,8 @@ if 'arama_sonuclari' not in st.session_state:
     st.session_state.arama_sonuclari = []
 if 'vitrin_verisi' not in st.session_state:
     st.session_state.vitrin_verisi = []
+if 'pratik_vitrin' not in st.session_state: # Pratik tarifler için özel hafıza
+    st.session_state.pratik_vitrin = []
 if 'kullanici_tarifleri' not in st.session_state:
     st.session_state.kullanici_tarifleri = verileri_yukle()
 
@@ -53,8 +55,10 @@ def cevir_en_tr(metin):
     try: return GoogleTranslator(source='en', target='tr').translate(metin)
     except: return metin
 
+# KATEGORİLER (Pratik Tarifler Eklendi)
 KATEGORILER = {
     "Tümü": None,
+    "Pratik Tarifler ⚡": "pratik", # Yeni Kod
     "Kahvaltı 🥞": "breakfast",
     "Ana Yemek 🥘": "main course",
     "Çorba 🥣": "soup",
@@ -85,12 +89,25 @@ def tarif_ara(malzemeler, kategori_kod):
     params = {
         "apiKey": API_KEY, "number": 12, "addRecipeInformation": False
     }
-    if kategori_kod: params["type"] = kategori_kod
+    
+    # --- PRATİK TARİF MANTIĞI ---
+    if kategori_kod == "pratik":
+        params["maxReadyTime"] = 30 # 30 dakikadan kısa
+        params["sort"] = "time"     # En hızlısı en başta
+        # Tür belirtmiyoruz, her şey olabilir, yeter ki hızlı olsun.
+    elif kategori_kod: 
+        params["type"] = kategori_kod
+    # ----------------------------
+
     if ingilizce_malz:
         params["includeIngredients"] = ingilizce_malz
         params["sort"] = "min-missing-ingredients"
     else:
-        if kategori_kod: params["sort"] = "popularity"
+        # Malzeme yoksa vitrin mantığı
+        if kategori_kod == "pratik":
+            params["sort"] = "random" # Rastgele hızlı tarifler getir
+        elif kategori_kod: 
+            params["sort"] = "popularity"
         else: return []
 
     try:
@@ -131,13 +148,13 @@ def detay_getir(tarif_id):
     except: return None
     return None
 
-# --- 4. TASARIM (GİZLİLİK MODU AKTİF) ---
+# --- 4. TASARIM (GİZLİLİK MODU) ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
 :root { color-scheme: dark; }
 
-/* GİZLİLİK AYARLARI (Menüleri Sakla) */
+/* GİZLİLİK AYARLARI */
 #MainMenu {visibility: hidden;}
 header {visibility: hidden;}
 footer {visibility: hidden;}
@@ -250,32 +267,39 @@ else:
 
         gosterilecek_liste = []
         
-        # 1. DURUM: Arama butonuna basıldıysa (Sonuçları Getir)
+        # 1. Arama Yapıldıysa
         if ara_butonu:
              with st.spinner(f"Aranıyor..."):
                 st.session_state.arama_sonuclari = tarif_ara(malz, secilen_kategori_kod)
                 gosterilecek_liste = st.session_state.arama_sonuclari
         
-        # 2. DURUM: Arama yapılmadıysa ve sonuçlar boşsa...
+        # 2. Arama Yoksa -> Kategoriye Göre Davran
         elif not st.session_state.arama_sonuclari:
             
-            # --- KRİTİK DEĞİŞİKLİK BURADA ---
-            # Sadece "Tümü" seçiliyse Vitrini göster.
+            # DURUM A: "Tümü" seçiliyse -> ANA VİTRİN
             if secilen_menu == "Tümü":
                 gosterilecek_liste = list(st.session_state.kullanici_tarifleri)
-                
                 if not st.session_state.vitrin_verisi:
                      with st.spinner("Menü Hazırlanıyor..."):
                         st.session_state.vitrin_verisi = vitrin_getir()
                 gosterilecek_liste += st.session_state.vitrin_verisi
                 st.markdown(f"### ✨ Vitrin")
-            
-            # Başka bir kategori seçiliyse (Örn: Kahvaltı) BOŞ GÖSTER.
+
+            # DURUM B: "Pratik Tarifler" seçiliyse -> PRATİK VİTRİN (Otomatik Gelir!)
+            elif secilen_menu == "Pratik Tarifler ⚡":
+                if not st.session_state.pratik_vitrin:
+                     with st.spinner("Şipşak Tarifler Hazırlanıyor... ⚡"):
+                        # Malzeme boş, kategori 'pratik' -> Otomatik popüler pratikleri getirir
+                        st.session_state.pratik_vitrin = tarif_ara("", "pratik")
+                gosterilecek_liste = st.session_state.pratik_vitrin
+                st.markdown(f"### ⚡ Pratik ve Hızlı Tarifler (30 dk altı)")
+
+            # DURUM C: Diğerleri (Kahvaltı vb.) -> Boş Durur
             else:
                 gosterilecek_liste = [] 
-                st.info(f"💡 **{secilen_menu}** kategorisinde arama yapmak için malzemeleri girip 'BUL' butonuna basın.")
+                st.info(f"💡 **{secilen_menu}** için dolaptaki malzemeleri girip 'BUL'a basın.")
 
-        # 3. DURUM: Hafızadaki sonuçları göster
+        # 3. Sonuçlar varsa göster
         else:
              gosterilecek_liste = st.session_state.arama_sonuclari
 
