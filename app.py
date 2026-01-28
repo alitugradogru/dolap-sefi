@@ -109,7 +109,6 @@ def detay_getir(tarif_id):
     if isinstance(tarif_id, str) and tarif_id.startswith("local_"):
         guncel_liste = st.session_state.kullanici_tarifleri
         for t in guncel_liste:
-            # Burada da güvenlik kontrolü yapalım
             if t and 'id' in t and t['id'] == tarif_id:
                 return t
         return None
@@ -193,7 +192,7 @@ else:
         secenekler.append("✍️ Tarif Ekle (Yeni)")
         secilen_menu = st.radio("Seçimini Yap:", secenekler)
         st.markdown("---")
-        st.info("💡 Kendi eklediğin tarifler artık silinmez!")
+        # st.info BURADAN KALDIRILDI! (Artık temiz)
 
     if secilen_menu == "✍️ Tarif Ekle (Yeni)":
         st.title("✍️ Kendi Tarifini Ekle")
@@ -234,7 +233,8 @@ else:
 
     else:
         secilen_kategori_kod = KATEGORILER[secilen_menu]
-        st.title("👨‍🍳 Dolap Şefi:\nDolaptaki Yardımcınız")
+        # İSİM BURADA DÜZELDİ!
+        st.title("👨‍🍳 Dolap Şefi: Dolaptaki Yardımcınız")
         
         with st.form("arama_formu"):
             c1, c2 = st.columns([3, 1])
@@ -250,7 +250,6 @@ else:
                 st.session_state.arama_sonuclari = tarif_ara(malz, secilen_kategori_kod)
                 gosterilecek_liste = st.session_state.arama_sonuclari
         elif not st.session_state.arama_sonuclari:
-            # Önce kullanıcı tariflerini al
             gosterilecek_liste = list(st.session_state.kullanici_tarifleri)
             
             if not st.session_state.vitrin_verisi:
@@ -264,11 +263,9 @@ else:
         if gosterilecek_liste:
             cols = st.columns(4)
             for i, t in enumerate(gosterilecek_liste):
-                # --- İŞTE DÜZELTME BURADA! ---
-                # Eğer tarif bozuksa (ID'si yoksa) o tarifi ATLA, sistemi çökertme.
+                # BOZUK TARİF KORUMASI (Hata önleyici)
                 if not t or 'id' not in t:
                     continue
-                # -----------------------------
 
                 with cols[i % 4]:
                     with st.container():
