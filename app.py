@@ -243,7 +243,7 @@ else:
 
     else:
         secilen_kategori_kod = KATEGORILER[secilen_menu]
-        st.title("👨‍🍳 Dolap Şefi:\nDolaptaki Yardımcınız")
+        st.title("👨‍🍳 Dolap Şefi: Dolaptaki Yardımcınız")
         
         with st.form("arama_formu"):
             c1, c2 = st.columns([3, 1])
