@@ -17,24 +17,21 @@ st.set_page_config(
 API_KEY = "1cb477a1c23a4594aac7d09f5099ae8b"
 DOSYA_ADI = "tarifler.json"
 
-# --- 2. HAFIZA VE DOSYA YÖNETİMİ (YENİ!) ---
+# --- 2. HAFIZA VE DOSYA YÖNETİMİ ---
 
-# Dosyadan Veri Oku
 def verileri_yukle():
     if os.path.exists(DOSYA_ADI):
         try:
             with open(DOSYA_ADI, "r", encoding="utf-8") as f:
                 return json.load(f)
         except:
-            return [] # Dosya bozuksa boş dön
+            return [] 
     return []
 
-# Dosyaya Veri Yaz
 def verileri_kaydet(veri_listesi):
     with open(DOSYA_ADI, "w", encoding="utf-8") as f:
         json.dump(veri_listesi, f, ensure_ascii=False, indent=4)
 
-# SESSION STATE BAŞLATMA
 if 'sayfa' not in st.session_state:
     st.session_state.sayfa = 'ana_sayfa'
 if 'secilen_tarif_id' not in st.session_state:
@@ -43,8 +40,6 @@ if 'arama_sonuclari' not in st.session_state:
     st.session_state.arama_sonuclari = []
 if 'vitrin_verisi' not in st.session_state:
     st.session_state.vitrin_verisi = []
-
-# Kullanıcı tariflerini dosyadan çekip hafızaya atıyoruz (Kalıcılık Burası!)
 if 'kullanici_tarifleri' not in st.session_state:
     st.session_state.kullanici_tarifleri = verileri_yukle()
 
@@ -111,16 +106,14 @@ def tarif_ara(malzemeler, kategori_kod):
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def detay_getir(tarif_id):
-    # Kendi tarifimiz mi kontrol et (Hafızadan değil dosyadan/state'den)
     if isinstance(tarif_id, str) and tarif_id.startswith("local_"):
-        # Güncel listeyi kontrol et
         guncel_liste = st.session_state.kullanici_tarifleri
         for t in guncel_liste:
-            if t['id'] == tarif_id:
+            # Burada da güvenlik kontrolü yapalım
+            if t and 'id' in t and t['id'] == tarif_id:
                 return t
         return None
 
-    # API Tarifi
     url = f"https://api.spoonacular.com/recipes/{tarif_id}/information"
     params = {"apiKey": API_KEY}
     try:
@@ -176,6 +169,7 @@ if st.session_state.sayfa == 'detay':
                 st.markdown(f'<a href="https://www.migros.com.tr/arama?q={ana_malz}" target="_blank" class="btn-migros">🛒 {ana_malz} Sipariş Ver</a>', unsafe_allow_html=True)
             with col2:
                 st.markdown(f"<h2 style='color: #FF9966;'>{d['title']}</h2>", unsafe_allow_html=True)
+                
                 st.markdown("### 🛒 Malzemeler")
                 if d.get('extendedIngredients'):
                     for m in d['extendedIngredients']:
@@ -190,7 +184,7 @@ if st.session_state.sayfa == 'detay':
                      st.write(d['instructions'])
                 else: st.write("Tarif detayı yok.")
         else:
-            st.error("Hata: Tarif yüklenemedi.")
+            st.error("Hata: Tarif yüklenemedi. (Silinmiş olabilir)")
 
 else:
     with st.sidebar:
@@ -232,10 +226,7 @@ else:
                     "analyzedInstructions": []
                 }
                 
-                # 1. Önce Hafızaya Ekle
                 st.session_state.kullanici_tarifleri.insert(0, yeni_tarif)
-                
-                # 2. Sonra DOSYAYA Kaydet (Kalıcılık için!)
                 verileri_kaydet(st.session_state.kullanici_tarifleri)
                 
                 st.success(f"Harika! **{y_isim}** dosyaya kaydedildi ve yayınlandı.")
@@ -243,7 +234,7 @@ else:
 
     else:
         secilen_kategori_kod = KATEGORILER[secilen_menu]
-        st.title("👨‍🍳 Dolap Şefi: Dolaptaki Yardımcınız")
+        st.title("👨‍🍳 Dolap Şefi:\nDolaptaki Yardımcınız")
         
         with st.form("arama_formu"):
             c1, c2 = st.columns([3, 1])
@@ -259,7 +250,7 @@ else:
                 st.session_state.arama_sonuclari = tarif_ara(malz, secilen_kategori_kod)
                 gosterilecek_liste = st.session_state.arama_sonuclari
         elif not st.session_state.arama_sonuclari:
-            # Önce kullanıcı tariflerini (DOSYADAN) al
+            # Önce kullanıcı tariflerini al
             gosterilecek_liste = list(st.session_state.kullanici_tarifleri)
             
             if not st.session_state.vitrin_verisi:
@@ -273,12 +264,19 @@ else:
         if gosterilecek_liste:
             cols = st.columns(4)
             for i, t in enumerate(gosterilecek_liste):
+                # --- İŞTE DÜZELTME BURADA! ---
+                # Eğer tarif bozuksa (ID'si yoksa) o tarifi ATLA, sistemi çökertme.
+                if not t or 'id' not in t:
+                    continue
+                # -----------------------------
+
                 with cols[i % 4]:
                     with st.container():
                         st.image(t.get('image', 'https://via.placeholder.com/300'), use_container_width=True)
                         baslik = t.get('title_tr', t.get('title', 'İsimsiz'))
                         if len(baslik) > 35: baslik = baslik[:32] + "..."
                         st.markdown(f"**{baslik}**")
+                        
                         if st.button("Tarife Git", key=f"btn_{t['id']}"):
                             st.session_state.secilen_tarif_id = t['id']
                             st.session_state.sayfa = 'detay'
