@@ -131,14 +131,21 @@ def detay_getir(tarif_id):
     except: return None
     return None
 
-# --- 4. TASARIM ---
+# --- 4. TASARIM (GİZLİLİK MODU AKTİF) ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
 :root { color-scheme: dark; }
+
+/* GİZLİLİK AYARLARI (Menüleri Sakla) */
+#MainMenu {visibility: hidden;}
+header {visibility: hidden;}
+footer {visibility: hidden;}
+
 [data-testid="stAppViewContainer"], .stApp { background-color: #0e1117 !important; background-image: radial-gradient(circle at 50% 0%, #2b0c0c 0%, #0e1117 80%) !important; color: white !important; font-family: 'Poppins', sans-serif; }
 p, h1, h2, h3, h4, span, div, label { color: white !important; }
-h1 { font-weight: 900; font-size: 3rem; background: -webkit-linear-gradient(45deg, #FF9966, #FF5E62); -webkit-background-clip: text; -webkit-text-fill-color: transparent !important; text-align: center; }
+h1 { font-weight: 900; font-size: 3rem; background: -webkit-linear-gradient(45deg, #FF9966, #FF5E62); -webkit-background-clip: text; -webkit-text-fill-color: transparent !important; text-align: center; margin-top: -50px; }
+
 [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] { background: rgba(255, 255, 255, 0.05) !important; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 15px; padding: 15px; transition: transform 0.3s; }
 img { border-radius: 10px; width: 100%; object-fit: cover; }
 .stButton > button { width: 100%; border-radius: 10px; font-weight: 700; color: white !important; background: linear-gradient(90deg, #FF9966 0%, #FF5E62 100%) !important; border: none; padding: 10px; }
@@ -183,7 +190,7 @@ if st.session_state.sayfa == 'detay':
                      st.write(d['instructions'])
                 else: st.write("Tarif detayı yok.")
         else:
-            st.error("Hata: Tarif yüklenemedi. (Silinmiş olabilir)")
+            st.error("Hata: Tarif yüklenemedi.")
 
 else:
     with st.sidebar:
@@ -192,7 +199,6 @@ else:
         secenekler.append("✍️ Tarif Ekle (Yeni)")
         secilen_menu = st.radio("Seçimini Yap:", secenekler)
         st.markdown("---")
-        # st.info BURADAN KALDIRILDI! (Artık temiz)
 
     if secilen_menu == "✍️ Tarif Ekle (Yeni)":
         st.title("✍️ Kendi Tarifini Ekle")
@@ -227,13 +233,11 @@ else:
                 
                 st.session_state.kullanici_tarifleri.insert(0, yeni_tarif)
                 verileri_kaydet(st.session_state.kullanici_tarifleri)
-                
                 st.success(f"Harika! **{y_isim}** dosyaya kaydedildi ve yayınlandı.")
                 st.balloons()
 
     else:
         secilen_kategori_kod = KATEGORILER[secilen_menu]
-        # İSİM BURADA DÜZELDİ!
         st.title("👨‍🍳 Dolap Şefi: Dolaptaki Yardımcınız")
         
         with st.form("arama_formu"):
@@ -245,27 +249,41 @@ else:
                 ara_butonu = st.form_submit_button("🔍 BUL", use_container_width=True)
 
         gosterilecek_liste = []
+        
+        # 1. DURUM: Arama butonuna basıldıysa (Sonuçları Getir)
         if ara_butonu:
              with st.spinner(f"Aranıyor..."):
                 st.session_state.arama_sonuclari = tarif_ara(malz, secilen_kategori_kod)
                 gosterilecek_liste = st.session_state.arama_sonuclari
+        
+        # 2. DURUM: Arama yapılmadıysa ve sonuçlar boşsa...
         elif not st.session_state.arama_sonuclari:
-            gosterilecek_liste = list(st.session_state.kullanici_tarifleri)
             
-            if not st.session_state.vitrin_verisi:
-                 with st.spinner("Menü Hazırlanıyor..."):
-                    st.session_state.vitrin_verisi = vitrin_getir()
-            gosterilecek_liste += st.session_state.vitrin_verisi
-            if secilen_menu == "Tümü": st.markdown(f"### ✨ Vitrin")
+            # --- KRİTİK DEĞİŞİKLİK BURADA ---
+            # Sadece "Tümü" seçiliyse Vitrini göster.
+            if secilen_menu == "Tümü":
+                gosterilecek_liste = list(st.session_state.kullanici_tarifleri)
+                
+                if not st.session_state.vitrin_verisi:
+                     with st.spinner("Menü Hazırlanıyor..."):
+                        st.session_state.vitrin_verisi = vitrin_getir()
+                gosterilecek_liste += st.session_state.vitrin_verisi
+                st.markdown(f"### ✨ Vitrin")
+            
+            # Başka bir kategori seçiliyse (Örn: Kahvaltı) BOŞ GÖSTER.
+            else:
+                gosterilecek_liste = [] 
+                st.info(f"💡 **{secilen_menu}** kategorisinde arama yapmak için malzemeleri girip 'BUL' butonuna basın.")
+
+        # 3. DURUM: Hafızadaki sonuçları göster
         else:
              gosterilecek_liste = st.session_state.arama_sonuclari
 
+        # LİSTELEME
         if gosterilecek_liste:
             cols = st.columns(4)
             for i, t in enumerate(gosterilecek_liste):
-                # BOZUK TARİF KORUMASI (Hata önleyici)
-                if not t or 'id' not in t:
-                    continue
+                if not t or 'id' not in t: continue
 
                 with cols[i % 4]:
                     with st.container():
