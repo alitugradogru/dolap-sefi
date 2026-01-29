@@ -10,7 +10,7 @@ st.set_page_config(
     page_title="Dolap Şefi: Dolaptaki Yardımcınız", 
     page_icon="👨‍🍳", 
     layout="wide", 
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="auto" 
 )
 
 # API ANAHTARI
@@ -40,7 +40,7 @@ if 'arama_sonuclari' not in st.session_state:
     st.session_state.arama_sonuclari = []
 if 'vitrin_verisi' not in st.session_state:
     st.session_state.vitrin_verisi = []
-if 'pratik_vitrin' not in st.session_state: # Pratik tarifler için özel hafıza
+if 'pratik_vitrin' not in st.session_state:
     st.session_state.pratik_vitrin = []
 if 'kullanici_tarifleri' not in st.session_state:
     st.session_state.kullanici_tarifleri = verileri_yukle()
@@ -55,10 +55,9 @@ def cevir_en_tr(metin):
     try: return GoogleTranslator(source='en', target='tr').translate(metin)
     except: return metin
 
-# KATEGORİLER (Pratik Tarifler Eklendi)
 KATEGORILER = {
     "Tümü": None,
-    "Pratik Tarifler ⚡": "pratik", # Yeni Kod
+    "Pratik Tarifler ⚡": "pratik",
     "Kahvaltı 🥞": "breakfast",
     "Ana Yemek 🥘": "main course",
     "Çorba 🥣": "soup",
@@ -90,22 +89,18 @@ def tarif_ara(malzemeler, kategori_kod):
         "apiKey": API_KEY, "number": 12, "addRecipeInformation": False
     }
     
-    # --- PRATİK TARİF MANTIĞI ---
     if kategori_kod == "pratik":
-        params["maxReadyTime"] = 30 # 30 dakikadan kısa
-        params["sort"] = "time"     # En hızlısı en başta
-        # Tür belirtmiyoruz, her şey olabilir, yeter ki hızlı olsun.
+        params["maxReadyTime"] = 30
+        params["sort"] = "time"
     elif kategori_kod: 
         params["type"] = kategori_kod
-    # ----------------------------
 
     if ingilizce_malz:
         params["includeIngredients"] = ingilizce_malz
         params["sort"] = "min-missing-ingredients"
     else:
-        # Malzeme yoksa vitrin mantığı
         if kategori_kod == "pratik":
-            params["sort"] = "random" # Rastgele hızlı tarifler getir
+            params["sort"] = "random"
         elif kategori_kod: 
             params["sort"] = "popularity"
         else: return []
@@ -148,20 +143,40 @@ def detay_getir(tarif_id):
     except: return None
     return None
 
-# --- 4. TASARIM (GİZLİLİK MODU) ---
+# --- 4. TASARIM (DÜZELTİLMİŞ & GÜVENLİ CSS) ---
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;800&display=swap');
 :root { color-scheme: dark; }
 
-/* GİZLİLİK AYARLARI */
-#MainMenu {visibility: hidden;}
-header {visibility: hidden;}
+/* --- KRİTİK MOBİL DÜZELTME --- */
+/* Üstteki 'Header'ı tamamen gizlemiyoruz, çünkü açma düğmesi orada! */
+/* Sadece içindeki 'istemediğimiz' parçaları gizliyoruz. */
+
+/* 1. Renkli Çizgiyi (Decoration) Yok Et */
+[data-testid="stDecoration"] {
+    display: none;
+}
+
+/* 2. Sağ Üstteki Menüyü (Manage App, 3 nokta) Yok Et */
+[data-testid="stToolbar"] {
+    visibility: hidden;
+}
+
+/* 3. Header'ın arka planını şeffaf yap (Böylece düğme havada asılı gibi durur) */
+[data-testid="stHeader"] {
+    background-color: transparent;
+}
+
+/* 4. Alt Bilgiyi (Footer) Gizle */
 footer {visibility: hidden;}
 
+/* --- GENEL TASARIM --- */
 [data-testid="stAppViewContainer"], .stApp { background-color: #0e1117 !important; background-image: radial-gradient(circle at 50% 0%, #2b0c0c 0%, #0e1117 80%) !important; color: white !important; font-family: 'Poppins', sans-serif; }
 p, h1, h2, h3, h4, span, div, label { color: white !important; }
-h1 { font-weight: 900; font-size: 3rem; background: -webkit-linear-gradient(45deg, #FF9966, #FF5E62); -webkit-background-clip: text; -webkit-text-fill-color: transparent !important; text-align: center; margin-top: -50px; }
+
+/* Başlığı biraz yukarı çektik */
+h1 { font-weight: 900; font-size: 3rem; background: -webkit-linear-gradient(45deg, #FF9966, #FF5E62); -webkit-background-clip: text; -webkit-text-fill-color: transparent !important; text-align: center; margin-top: -60px; }
 
 [data-testid="stVerticalBlock"] > [style*="flex-direction: column;"] > [data-testid="stVerticalBlock"] { background: rgba(255, 255, 255, 0.05) !important; border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 15px; padding: 15px; transition: transform 0.3s; }
 img { border-radius: 10px; width: 100%; object-fit: cover; }
@@ -169,6 +184,7 @@ img { border-radius: 10px; width: 100%; object-fit: cover; }
 .btn-migros { display: block; width: 100%; background: linear-gradient(45deg, #F7941D, #FFCC00); color: white !important; text-align: center; padding: 15px; border-radius: 12px; font-weight: 900; text-decoration: none; margin-top: 20px; box-shadow: 0 4px 15px rgba(247, 148, 29, 0.4); transition: 0.3s; }
 [data-testid="stSidebar"] { background-color: #161a25 !important; border-right: 1px solid #333; }
 .stTextInput > div > div > input, .stTextArea > div > div > textarea { color: white !important; background-color: #262730 !important; }
+
 @media only screen and (max-width: 600px) { h1 { font-size: 2rem !important; } .stButton > button { padding: 8px !important; font-size: 0.9rem !important; } }
 </style>
 """, unsafe_allow_html=True)
@@ -192,13 +208,11 @@ if st.session_state.sayfa == 'detay':
                 st.markdown(f'<a href="https://www.migros.com.tr/arama?q={ana_malz}" target="_blank" class="btn-migros">🛒 {ana_malz} Sipariş Ver</a>', unsafe_allow_html=True)
             with col2:
                 st.markdown(f"<h2 style='color: #FF9966;'>{d['title']}</h2>", unsafe_allow_html=True)
-                
                 st.markdown("### 🛒 Malzemeler")
                 if d.get('extendedIngredients'):
                     for m in d['extendedIngredients']:
                         st.write(f"• {m['original']}")
                 else: st.write("• Malzeme bilgisi yok.")
-                
                 st.markdown("### 👨‍🍳 Hazırlanışı")
                 if d.get('analyzedInstructions'):
                     for step in d['analyzedInstructions'][0]['steps']:
@@ -247,7 +261,6 @@ else:
                     "instructions": y_yapilis,
                     "analyzedInstructions": []
                 }
-                
                 st.session_state.kullanici_tarifleri.insert(0, yeni_tarif)
                 verileri_kaydet(st.session_state.kullanici_tarifleri)
                 st.success(f"Harika! **{y_isim}** dosyaya kaydedildi ve yayınlandı.")
@@ -266,17 +279,12 @@ else:
                 ara_butonu = st.form_submit_button("🔍 BUL", use_container_width=True)
 
         gosterilecek_liste = []
-        
-        # 1. Arama Yapıldıysa
         if ara_butonu:
              with st.spinner(f"Aranıyor..."):
                 st.session_state.arama_sonuclari = tarif_ara(malz, secilen_kategori_kod)
                 gosterilecek_liste = st.session_state.arama_sonuclari
         
-        # 2. Arama Yoksa -> Kategoriye Göre Davran
         elif not st.session_state.arama_sonuclari:
-            
-            # DURUM A: "Tümü" seçiliyse -> ANA VİTRİN
             if secilen_menu == "Tümü":
                 gosterilecek_liste = list(st.session_state.kullanici_tarifleri)
                 if not st.session_state.vitrin_verisi:
@@ -284,38 +292,28 @@ else:
                         st.session_state.vitrin_verisi = vitrin_getir()
                 gosterilecek_liste += st.session_state.vitrin_verisi
                 st.markdown(f"### ✨ Vitrin")
-
-            # DURUM B: "Pratik Tarifler" seçiliyse -> PRATİK VİTRİN (Otomatik Gelir!)
             elif secilen_menu == "Pratik Tarifler ⚡":
                 if not st.session_state.pratik_vitrin:
                      with st.spinner("Şipşak Tarifler Hazırlanıyor... ⚡"):
-                        # Malzeme boş, kategori 'pratik' -> Otomatik popüler pratikleri getirir
                         st.session_state.pratik_vitrin = tarif_ara("", "pratik")
                 gosterilecek_liste = st.session_state.pratik_vitrin
                 st.markdown(f"### ⚡ Pratik ve Hızlı Tarifler (30 dk altı)")
-
-            # DURUM C: Diğerleri (Kahvaltı vb.) -> Boş Durur
             else:
                 gosterilecek_liste = [] 
                 st.info(f"💡 **{secilen_menu}** için dolaptaki malzemeleri girip 'BUL'a basın.")
-
-        # 3. Sonuçlar varsa göster
         else:
              gosterilecek_liste = st.session_state.arama_sonuclari
 
-        # LİSTELEME
         if gosterilecek_liste:
             cols = st.columns(4)
             for i, t in enumerate(gosterilecek_liste):
                 if not t or 'id' not in t: continue
-
                 with cols[i % 4]:
                     with st.container():
                         st.image(t.get('image', 'https://via.placeholder.com/300'), use_container_width=True)
                         baslik = t.get('title_tr', t.get('title', 'İsimsiz'))
                         if len(baslik) > 35: baslik = baslik[:32] + "..."
                         st.markdown(f"**{baslik}**")
-                        
                         if st.button("Tarife Git", key=f"btn_{t['id']}"):
                             st.session_state.secilen_tarif_id = t['id']
                             st.session_state.sayfa = 'detay'
